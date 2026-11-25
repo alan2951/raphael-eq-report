@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>設備異常快填與後台調閱系統（多人共用版 v1.3）</title>
+  <title>設備異常快填與後台調閱系統（多人共用版 v1.3.1）</title>
   <style>
     :root {
       --bg: #f3f5f7;
@@ -398,7 +398,7 @@
       bottom: 0;
       left: 0;
       right: 0;
-      z-index: 40;
+      z-index: 50;
       background: #fff;
       border-top: 1px solid var(--line);
       display: grid;
@@ -408,7 +408,7 @@
     .nav-btn {
       border: none;
       background: transparent;
-      padding: 6px 4px;
+      padding: 8px 4px;
       border-radius: 10px;
       color: var(--muted);
       font-size: 12px;
@@ -418,6 +418,10 @@
       flex-direction: column;
       align-items: center;
       gap: 2px;
+      touch-action: manipulation;
+    }
+    .nav-btn * {
+      pointer-events: none;
     }
     .nav-btn.active {
       color: var(--brand-2);
@@ -527,7 +531,7 @@
 
   <header class="topbar">
     <div>
-      <div class="topbar-title">設備異常快填與後台調閱 <span style="font-size:11px;font-weight:600;background:rgba(255,255,255,0.16);padding:2px 7px;border-radius:999px;vertical-align:middle;">多人共用版 v1.3</span></div>
+      <div class="topbar-title">設備異常快填與後台調閱 <span style="font-size:11px;font-weight:600;background:rgba(255,255,255,0.16);padding:2px 7px;border-radius:999px;vertical-align:middle;">多人共用版 v1.3.1</span></div>
       <div class="topbar-sub">專記當天檔回異常 · 業務快填・手機刪除同步雲端・後台支援 7/14 日與日/月/累統計</div>
     </div>
     <div class="topbar-actions">
@@ -780,7 +784,7 @@
 
   </main>
 
-  <nav class="bottom-nav">
+  <nav class="bottom-nav" id="bottomNav">
     <button type="button" class="nav-btn active" data-target="view-survey">
       <span>📝</span>
       <span>一頁快填</span>
@@ -845,4 +849,819 @@
           abnormalGroup: "C組、D組",
           triggerType: "穿戴活動間歇性中斷",
           actionStatus: "後續回報／7日內異常",
-          videoName: "20
+          videoName: "20261123_EQ088_20s異常.mp4",
+          photoName: "20261123_EQ088_檢查表.jpg",
+          photoDataUrl: "",
+          notes: "距11/19檢修6天，跨組連帶異常"
+        }
+      ];
+
+      let records = [];
+      let deletedIdsSet = new Set();
+      let currentVideo = { name: "", previewUrl: "", dataUrl: "" };
+      let currentPhoto = { name: "", previewUrl: "", dataUrl: "" };
+
+      function switchTab(targetId) {
+        if (!targetId) return;
+        const targetView = document.getElementById(targetId);
+        if (!targetView) return;
+
+        document.querySelectorAll(".nav-btn").forEach(b => {
+          b.classList.toggle("active", b.getAttribute("data-target") === targetId);
+        });
+        document.querySelectorAll(".view").forEach(v => {
+          v.classList.toggle("active", v.id === targetId);
+        });
+
+        try {
+          renderAll();
+        } catch (err) {
+          console.error(err);
+        }
+        window.scrollTo({ top: 0, behavior: "instant" });
+      }
+
+      // 優先綁定底部導覽列切換，確保任何時候都能切換分頁
+      const bottomNavEl = document.getElementById("bottomNav");
+      if (bottomNavEl) {
+        bottomNavEl.addEventListener("click", e => {
+          const btn = e.target.closest(".nav-btn");
+          if (btn) {
+            e.preventDefault();
+            switchTab(btn.getAttribute("data-target"));
+          }
+        });
+      }
+
+      function nowTimeStr() {
+        const d = new Date();
+        return d.toTimeString().slice(0, 8);
+      }
+
+      function showToast(msg) {
+        const el = document.getElementById("toast");
+        if (!el) return;
+        el.textContent = msg;
+        el.classList.add("show");
+        clearTimeout(window.__toastTimer);
+        window.__toastTimer = setTimeout(() => el.classList.remove("show"), 2400);
+      }
+
+      function getEndpoint() {
+        try { return (localStorage.getItem(ENDPOINT_KEY) || "").trim(); } catch (e) { return ""; }
+      }
+
+      function setEndpoint(val) {
+        try {
+          if (val) localStorage.setItem(ENDPOINT_KEY, val.trim());
+          else localStorage.removeItem(ENDPOINT_KEY);
+        } catch (e) {}
+        refreshCloudBadge();
+      }
+
+      function loadDeletedIds() {
+        try {
+          const raw = localStorage.getItem(DELETED_IDS_KEY);
+          const arr = raw ? JSON.parse(raw) : [];
+          deletedIdsSet = new Set(Array.isArray(arr) ? arr.filter(Boolean) : []);
+        } catch (e) {
+          deletedIdsSet = new Set();
+        }
+      }
+
+      function saveDeletedIds() {
+        try {
+          localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(Array.from(deletedIdsSet)));
+        } catch (e) {}
+      }
+
+      function markIdDeleted(id) {
+        if (!id) return;
+        deletedIdsSet.add(String(id));
+        saveDeletedIds();
+      }
+
+      function unmarkIdDeleted(id) {
+        if (!id) return;
+        deletedIdsSet.delete(String(id));
+        saveDeletedIds();
+      }
+
+      function loadRecords() {
+        loadDeletedIds();
+        try {
+          let raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) {
+            for (const k of LEGACY_KEYS) {
+              const old = localStorage.getItem(k);
+              if (old) {
+                raw = old;
+                break;
+              }
+            }
+          }
+          if (!raw) {
+            records = DEFAULT_RECORDS.filter(r => !deletedIdsSet.has(r.id)).slice();
+            saveRecords(false);
+          } else {
+            const parsed = JSON.parse(raw);
+            const list = Array.isArray(parsed) ? parsed : DEFAULT_RECORDS.slice();
+            records = list.filter(r => r && r.id && !deletedIdsSet.has(String(r.id)));
+          }
+        } catch (err) {
+          records = DEFAULT_RECORDS.filter(r => !deletedIdsSet.has(r.id)).slice();
+        }
+      }
+
+      function saveRecords(updateSyncClock) {
+        const storable = records
+          .filter(r => r && r.id && !deletedIdsSet.has(String(r.id)))
+          .map(r => ({
+            id: r.id,
+            recordDate: r.recordDate,
+            patientName: r.patientName,
+            chartNo: r.chartNo,
+            stage: r.stage || "",
+            signedOff: r.signedOff || "是",
+            prevDate: r.prevDate || "",
+            abnormalGroup: r.abnormalGroup || "",
+            triggerType: r.triggerType || "",
+            actionStatus: r.actionStatus || "",
+            videoName: r.videoName || "",
+            photoName: r.photoName || "",
+            photoDataUrl: (r.photoDataUrl && r.photoDataUrl.startsWith("data:")) ? r.photoDataUrl : "",
+            notes: r.notes || ""
+          }));
+
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(storable));
+        } catch (err) {
+          const slim = storable.map(r => ({ ...r, photoDataUrl: "" }));
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(slim)); } catch (e2) {}
+        }
+
+        if (updateSyncClock) {
+          const timeEl = document.getElementById("lastSyncTime");
+          const statusEl = document.getElementById("syncStatusText");
+          if (timeEl) timeEl.textContent = "同步於 " + nowTimeStr();
+          if (statusEl) {
+            statusEl.textContent = getEndpoint()
+              ? "狀態：已同步至本機與雲端試算表"
+              : "狀態：已同步至本機後台";
+          }
+        }
+      }
+
+      function calcDaysDiff(recDateStr, prevDateStr) {
+        if (!recDateStr || !prevDateStr) return null;
+        const d1 = new Date(recDateStr + "T00:00:00");
+        const d2 = new Date(prevDateStr + "T00:00:00");
+        if (Number.isNaN(d1.getTime()) || Number.isNaN(d2.getTime())) return null;
+        return Math.round((d1 - d2) / 86400000);
+      }
+
+      function isWithinDays(days, maxDays) {
+        return days !== null && days !== undefined && !Number.isNaN(days) && days >= 0 && days <= maxDays;
+      }
+
+      function getRiskBadge(days) {
+        if (days === null || days === undefined || Number.isNaN(days)) {
+          return { label: "未填前次日期", cls: "tag-warn" };
+        }
+        if (isWithinDays(days, 7)) {
+          return { label: `高風險（${days}天內·≤7天）`, cls: "tag-high" };
+        }
+        if (isWithinDays(days, 14)) {
+          return { label: `14日內異常（${days}天）`, cls: "tag-mid" };
+        }
+        return { label: `一般（${days}天）`, cls: "tag-ok" };
+      }
+
+      function getLocalTodayStr() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const d = String(now.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      }
+
+      function getLocalMonthStr() {
+        return getLocalTodayStr().slice(0, 7);
+      }
+
+      function updateRiskPreview() {
+        const todayStr = getLocalTodayStr();
+        const prevStr = document.getElementById("prevDate").value;
+        const box = document.getElementById("riskPreview");
+        if (!box) return;
+        if (!prevStr) {
+          box.style.display = "none";
+          return;
+        }
+        const diff = calcDaysDiff(todayStr, prevStr);
+        box.style.display = "flex";
+        if (isWithinDays(diff, 7)) {
+          box.className = "risk-banner risk-high";
+          box.innerHTML = `<span>⚠️ 距前次檢修／交機 <b>${diff} 天</b>（≤7天高風險件，亦屬14日內）</span><span>7/14日標記</span>`;
+        } else if (isWithinDays(diff, 14)) {
+          box.className = "risk-banner risk-mid";
+          box.innerHTML = `<span>ℹ️ 距前次檢修／交機 <b>${diff} 天</b>（8～14天內異常件）</span><span>14日內標記</span>`;
+        } else if (diff !== null) {
+          box.className = "risk-banner risk-ok";
+          box.innerHTML = `<span>距前次檢修／交機 <b>${diff} 天</b></span><span>超過14天</span>`;
+        } else {
+          box.style.display = "none";
+        }
+      }
+
+      function escapeHtml(str) {
+        return String(str || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function buildRecordCardHtml(r, allowDelete) {
+        const days = calcDaysDiff(r.recordDate, r.prevDate);
+        const badge = getRiskBadge(days);
+        const mediaBits = [];
+        if (r.videoName) mediaBits.push(`🎥 錄影：${r.videoName}`);
+        if (r.photoName) mediaBits.push(`📋 檢查表：${r.photoName}`);
+        const mediaText = mediaBits.length ? mediaBits.join(" | ") : "尚未附加影片/檢查表檔名";
+
+        let mediaPreviewHtml = "";
+        const cardPhotoSrc = r.photoDataUrl || r.photoPreviewUrl || "";
+        if (cardPhotoSrc) {
+          mediaPreviewHtml += `<img src="${cardPhotoSrc}" data-view-photo="${escapeHtml(cardPhotoSrc)}" data-view-title="${escapeHtml((r.patientName || "") + " - " + (r.photoName || "檢查表"))}" style="max-height:130px;border-radius:8px;margin-top:8px;display:block;cursor:zoom-in;" alt="檢查表" />`;
+        }
+        if (r.previewUrl) {
+          mediaPreviewHtml += `<video src="${r.previewUrl}" controls playsinline style="max-height:150px;border-radius:8px;margin-top:8px;display:block;background:#000;"></video>`;
+        }
+
+        return `
+          <div class="rec-card" data-rec-id="${escapeHtml(r.id)}">
+            <div class="rec-top">
+              <div>
+                <div class="rec-title">${escapeHtml(r.patientName)} <span style="font-weight:500;color:#64748b;font-size:13px;">（病歷號：${escapeHtml(r.chartNo || "-")}）</span></div>
+                <div class="rec-meta">
+                  登記日：<b>${escapeHtml(r.recordDate)}</b>
+                  ${r.prevDate ? ` · 前次日：<b>${escapeHtml(r.prevDate)}</b>` : ""}
+                  ${r.abnormalGroup ? ` · 組別：<b>${escapeHtml(r.abnormalGroup)}</b>` : ""}
+                </div>
+              </div>
+              <span class="tag ${badge.cls}">${escapeHtml(badge.label)}</span>
+            </div>
+            <div class="rec-meta">
+              階段：${escapeHtml(r.stage || "-")} · 簽核：${escapeHtml(r.signedOff || "-")} · 觸發：${escapeHtml(r.triggerType || "-")} · 處置：${escapeHtml(r.actionStatus || "-")}
+            </div>
+            <div class="rec-meta" style="margin-top:4px;color:#0f766e;font-weight:600;">${escapeHtml(mediaText)}</div>
+            ${r.notes ? `<div class="rec-meta" style="margin-top:4px;">備註：${escapeHtml(r.notes)}</div>` : ""}
+            ${mediaPreviewHtml}
+            ${allowDelete ? `
+              <div class="btn-row">
+                <button type="button" class="btn-sm danger" data-del-id="${escapeHtml(r.id)}">刪除紀錄（同步雲端）</button>
+              </div>` : ""}
+          </div>
+        `;
+      }
+
+      function syncQuickFilterButtons(mode) {
+        const b7 = document.getElementById("btnOnlyHighRisk");
+        const b14 = document.getElementById("btnOnly14Days");
+        if (b7) b7.classList.toggle("primary", mode === "7");
+        if (b14) b14.classList.toggle("primary", mode === "14");
+      }
+
+      function renderLookup() {
+        const kwEl = document.getElementById("searchKeyword");
+        const cnoEl = document.getElementById("searchChartNo");
+        const dayEl = document.getElementById("lookupDaysFilter");
+        const container = document.getElementById("lookupResults");
+        if (!container) return;
+
+        const kw = kwEl ? kwEl.value.trim().toLowerCase() : "";
+        const cno = cnoEl ? cnoEl.value.trim().toLowerCase() : "";
+        const dayFilter = dayEl ? dayEl.value : "all";
+        syncQuickFilterButtons(dayFilter);
+
+        const filtered = records.filter(r => {
+          const hay = `${r.patientName} ${r.chartNo} ${r.abnormalGroup} ${r.stage} ${r.triggerType} ${r.notes} ${r.videoName} ${r.photoName}`.toLowerCase();
+          const matchKw = !kw || hay.includes(kw);
+          const matchCno = !cno || String(r.chartNo || "").toLowerCase().includes(cno);
+          const days = calcDaysDiff(r.recordDate, r.prevDate);
+
+          let matchDays = true;
+          if (dayFilter === "7") {
+            matchDays = isWithinDays(days, 7);
+          } else if (dayFilter === "14") {
+            matchDays = isWithinDays(days, 14);
+          }
+          return matchKw && matchCno && matchDays;
+        });
+
+        if (!filtered.length) {
+          container.innerHTML = `<div class="card"><div class="card-hint" style="margin:0;">查無符合條件的紀錄，請調整姓名、病歷號或天數篩選。</div></div>`;
+          return;
+        }
+        container.innerHTML = `<div class="card-hint" style="margin:4px 2px 10px;">共查到 <b>${filtered.length}</b> 筆檔回／異常紀錄</div>` +
+          filtered.map(r => buildRecordCardHtml(r, false)).join("");
+      }
+
+      function renderBackend() {
+        const todayStr = getLocalTodayStr();
+        const monthStr = getLocalMonthStr();
+        const total = records.length;
+        const todayCount = records.filter(r => r.recordDate === todayStr).length;
+        const monthCount = records.filter(r => String(r.recordDate || "").startsWith(monthStr)).length;
+        const signedCount = records.filter(r => r.signedOff === "是").length;
+
+        const high7dCount = records.filter(r => isWithinDays(calcDaysDiff(r.recordDate, r.prevDate), 7)).length;
+        const within14dCount = records.filter(r => isWithinDays(calcDaysDiff(r.recordDate, r.prevDate), 14)).length;
+
+        const winSel = document.getElementById("statsWindowSelect");
+        const selectedWindow = winSel ? Number(winSel.value || 14) : 14;
+        const selectedCount = selectedWindow === 7 ? high7dCount : within14dCount;
+        const selectedShare = total ? ((selectedCount / total) * 100).toFixed(1) : "0.0";
+
+        const setText = (id, txt) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = txt;
+        };
+
+        setText("totalCountBadge", `日 ${todayCount}／月 ${monthCount}／累 ${total}`);
+        setText("kpiTodayTotal", String(todayCount));
+        setText("kpiTodayDate", `今日 ${todayStr}`);
+        setText("kpiMonthTotal", String(monthCount));
+        setText("kpiMonthLabel", `當月 ${monthStr}`);
+        setText("kpiTotal", String(total));
+        setText("kpiMonthShare", `當月佔比 ${total ? ((monthCount / total) * 100).toFixed(1) : "0.0"}%`);
+        setText("kpi7d", String(high7dCount));
+        setText("kpiSignedRate", `簽核後仍檔回 ${signedCount} 筆`);
+        setText("kpi14d", String(within14dCount));
+        setText("kpi14dSub", `14日內佔比 ${total ? ((within14dCount / total) * 100).toFixed(1) : "0.0"}%`);
+
+        setText("kpiSelectedWindowLabel", `目前統計（${selectedWindow}日內）`);
+        setText("kpiSelectedWindowVal", String(selectedCount));
+        setText("kpiSelectedWindowSub", `佔累積 ${selectedShare}% · ${selectedWindow === 7 ? "高風險警示" : "含7日內高風險"}`);
+
+        const listEl = document.getElementById("backendList");
+        if (!listEl) return;
+        if (!records.length) {
+          listEl.innerHTML = `<div class="card"><div class="card-hint" style="margin:0;">目前尚無後台紀錄。</div></div>`;
+          return;
+        }
+        listEl.innerHTML = records.map(r => buildRecordCardHtml(r, true)).join("");
+
+        listEl.querySelectorAll("[data-del-id]").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-del-id");
+            if (!id) return;
+            btn.disabled = true;
+            btn.textContent = "刪除同步中...";
+
+            records = records.filter(item => item.id !== id);
+            markIdDeleted(id);
+            saveRecords(true);
+            renderAll();
+
+            if (getEndpoint()) {
+              const cloudOk = await deleteRecordFromCloud(id);
+              if (cloudOk) {
+                showToast("已刪除本機並同步刪除雲端紀錄");
+              } else {
+                showToast("已刪除本機；雲端同步逾時，將於下次同步重試");
+              }
+            } else {
+              showToast("已刪除本機紀錄（未設定共用雲端網址）");
+            }
+          });
+        });
+      }
+
+      function renderAll() {
+        renderLookup();
+        renderBackend();
+      }
+
+      function runSyncWorkflow(sourceLabel) {
+        if (getEndpoint()) {
+          pullRecordsFromCloud(sourceLabel);
+          return;
+        }
+        loadRecords();
+        saveRecords(true);
+        renderAll();
+        showToast(`${sourceLabel}完成（共 ${records.length} 筆）`);
+      }
+
+      let photoZoomScale = 1;
+
+      function openPhotoModal(imgSrc, titleText) {
+        if (!imgSrc) return;
+        photoZoomScale = 1;
+        const mImg = document.getElementById("photoModalImg");
+        mImg.src = imgSrc;
+        mImg.style.transform = "scale(1)";
+        document.getElementById("photoModalTitle").textContent = titleText || "檢查表快速導覽";
+        document.getElementById("photoModal").classList.add("open");
+      }
+
+      function closePhotoModal() {
+        document.getElementById("photoModal").classList.remove("open");
+      }
+
+      function setPhotoZoom(deltaOrReset) {
+        const mImg = document.getElementById("photoModalImg");
+        if (deltaOrReset === "reset") {
+          photoZoomScale = 1;
+        } else {
+          photoZoomScale = Math.max(0.6, Math.min(3, +(photoZoomScale + deltaOrReset).toFixed(2)));
+        }
+        mImg.style.transform = `scale(${photoZoomScale})`;
+      }
+
+      document.getElementById("photoPreview").addEventListener("click", e => {
+        e.stopPropagation();
+        const srcUrl = currentPhoto.dataUrl || currentPhoto.previewUrl;
+        if (srcUrl) openPhotoModal(srcUrl, currentPhoto.name || "檢查表快速導覽");
+      });
+      document.getElementById("btnZoomPhoto").addEventListener("click", e => {
+        e.stopPropagation();
+        const srcUrl = currentPhoto.dataUrl || currentPhoto.previewUrl;
+        if (srcUrl) openPhotoModal(srcUrl, currentPhoto.name || "檢查表快速導覽");
+      });
+      document.getElementById("btnClosePhotoModal").addEventListener("click", closePhotoModal);
+      document.getElementById("btnPhotoZoomOut").addEventListener("click", () => setPhotoZoom(-0.25));
+      document.getElementById("btnPhotoZoomReset").addEventListener("click", () => setPhotoZoom("reset"));
+      document.getElementById("btnPhotoZoomIn").addEventListener("click", () => setPhotoZoom(0.25));
+
+      document.addEventListener("click", e => {
+        const target = e.target;
+        if (target && target.hasAttribute("data-view-photo")) {
+          openPhotoModal(target.getAttribute("data-view-photo"), target.getAttribute("data-view-title"));
+        }
+      });
+
+      document.getElementById("btnTopSync").addEventListener("click", () => runSyncWorkflow("同步作業"));
+      document.getElementById("btnLookupSync").addEventListener("click", () => runSyncWorkflow("同步查詢"));
+      document.getElementById("btnBackendSync").addEventListener("click", () => runSyncWorkflow("後台同步"));
+      document.getElementById("statsWindowSelect").addEventListener("change", renderBackend);
+
+      function handleVideoFile(file) {
+        if (!file) return;
+        const mb = (file.size / 1024 / 1024).toFixed(1);
+        const objUrl = URL.createObjectURL(file);
+        currentVideo = { name: file.name, previewUrl: objUrl, dataUrl: "" };
+        document.getElementById("videoMeta").textContent = `已選影片（約20秒級）：${file.name}（${mb} MB）`;
+        document.getElementById("videoBox").classList.add("has-file");
+        const vidEl = document.getElementById("videoPreview");
+        vidEl.src = objUrl;
+        vidEl.classList.add("show");
+        showToast(`已附加影片：${file.name}`);
+      }
+
+      document.getElementById("btnPickVideo").addEventListener("click", e => {
+        e.stopPropagation();
+        const inp = document.getElementById("videoInput");
+        try { inp.click(); } catch (err) { showToast("請直接點選下方「選擇檔案」"); }
+      });
+
+      document.getElementById("videoInput").addEventListener("change", e => {
+        handleVideoFile(e.target.files && e.target.files[0]);
+      });
+
+      function handlePhotoFile(file) {
+        if (!file) return;
+        const objUrl = URL.createObjectURL(file);
+        currentPhoto = { name: file.name, previewUrl: objUrl, dataUrl: "" };
+        document.getElementById("photoMeta").textContent = `已選檢查表：${file.name}`;
+        document.getElementById("photoBox").classList.add("has-file");
+        const imgEl = document.getElementById("photoPreview");
+        imgEl.src = objUrl;
+        imgEl.style.cursor = "zoom-in";
+        imgEl.classList.add("show");
+        document.getElementById("photoNavBar").classList.add("show");
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === "string" && reader.result.length < 2500000) {
+            currentPhoto.dataUrl = reader.result;
+          }
+        };
+        reader.readAsDataURL(file);
+        showToast(`已附加檢查表：${file.name}`);
+      }
+
+      document.getElementById("btnPickPhoto").addEventListener("click", e => {
+        e.stopPropagation();
+        const inp = document.getElementById("photoInput");
+        try { inp.click(); } catch (err) { showToast("請直接點選下方「選擇檔案」"); }
+      });
+
+      document.getElementById("photoInput").addEventListener("change", e => {
+        handlePhotoFile(e.target.files && e.target.files[0]);
+      });
+
+      document.getElementById("prevDate").addEventListener("change", updateRiskPreview);
+
+      document.getElementById("surveyForm").addEventListener("submit", e => {
+        e.preventDefault();
+        const patientName = document.getElementById("patientName").value.trim();
+        const chartNo = document.getElementById("chartNo").value.trim();
+        if (!patientName || !chartNo) {
+          showToast("請填寫患者姓名與病歷號");
+          return;
+        }
+
+        const now = new Date();
+        const recordDate = getLocalTodayStr();
+        const recId = "REC-" + now.getTime().toString().slice(-8);
+        unmarkIdDeleted(recId);
+
+        const newRec = {
+          id: recId,
+          recordDate,
+          patientName,
+          chartNo,
+          stage: document.getElementById("stageMain").value,
+          signedOff: document.getElementById("signedOff").value,
+          prevDate: document.getElementById("prevDate").value,
+          abnormalGroup: document.getElementById("abnormalGroup").value.trim(),
+          triggerType: document.getElementById("triggerType").value,
+          actionStatus: document.getElementById("actionStatus").value,
+          videoName: currentVideo.name,
+          photoName: currentPhoto.name,
+          previewUrl: currentVideo.previewUrl,
+          photoPreviewUrl: currentPhoto.previewUrl,
+          photoDataUrl: currentPhoto.dataUrl,
+          notes: document.getElementById("notes").value.trim()
+        };
+
+        records.unshift(newRec);
+        saveRecords(true);
+        if (getEndpoint()) {
+          pushRecordToCloud(newRec);
+        }
+        renderAll();
+
+        document.getElementById("surveyForm").reset();
+        currentVideo = { name: "", previewUrl: "", dataUrl: "" };
+        currentPhoto = { name: "", previewUrl: "", dataUrl: "" };
+        document.getElementById("videoMeta").textContent = "尚未附加錄影檔";
+        document.getElementById("photoMeta").textContent = "尚未附加檢查表照片";
+        document.getElementById("videoBox").classList.remove("has-file");
+        document.getElementById("photoBox").classList.remove("has-file");
+        document.getElementById("videoPreview").classList.remove("show");
+        document.getElementById("videoPreview").removeAttribute("src");
+        document.getElementById("photoPreview").classList.remove("show");
+        document.getElementById("photoPreview").removeAttribute("src");
+        document.getElementById("photoNavBar").classList.remove("show");
+        document.getElementById("riskPreview").style.display = "none";
+
+        showToast(`已儲存並同步「${patientName}」紀錄`);
+      });
+
+      document.getElementById("searchKeyword").addEventListener("input", renderLookup);
+      document.getElementById("searchChartNo").addEventListener("input", renderLookup);
+      document.getElementById("lookupDaysFilter").addEventListener("change", renderLookup);
+
+      document.getElementById("btnClearFilter").addEventListener("click", () => {
+        document.getElementById("searchKeyword").value = "";
+        document.getElementById("searchChartNo").value = "";
+        document.getElementById("lookupDaysFilter").value = "all";
+        renderLookup();
+        showToast("已清除篩選");
+      });
+
+      document.getElementById("btnOnlyHighRisk").addEventListener("click", () => {
+        const sel = document.getElementById("lookupDaysFilter");
+        sel.value = sel.value === "7" ? "all" : "7";
+        renderLookup();
+      });
+
+      document.getElementById("btnOnly14Days").addEventListener("click", () => {
+        const sel = document.getElementById("lookupDaysFilter");
+        sel.value = sel.value === "14" ? "all" : "14";
+        renderLookup();
+      });
+
+      document.getElementById("btnExportCsv").addEventListener("click", () => {
+        const headers = [
+          "紀錄日期", "患者姓名", "病歷號", "檢測回報階段",
+          "是否已簽核放行", "前次檢修交機日", "距前次天數", "7/14日內警示",
+          "異常組別", "觸發方式", "檔回處理狀態", "錄影檔名", "檢查表照片檔名", "備註"
+        ];
+        const rows = records.map(r => {
+          const d = calcDaysDiff(r.recordDate, r.prevDate);
+          const badge = getRiskBadge(d).label;
+          return [
+            r.recordDate, r.patientName, r.chartNo, r.stage,
+            r.signedOff, r.prevDate, d === null ? "" : d, badge,
+            r.abnormalGroup, r.triggerType, r.actionStatus, r.videoName, r.photoName, r.notes
+          ].map(v => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`).join(",");
+        });
+        const bom = "\uFEFF";
+        const csvStr = bom + headers.join(",") + "\n" + rows.join("\n");
+        const blob = new Blob([csvStr], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `多人共用版_v1.3.1_設備檔回與異常紀錄_${getLocalTodayStr()}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("已匯出 CSV 檔");
+      });
+
+      document.getElementById("btnExportJson").addEventListener("click", () => {
+        const blob = new Blob([JSON.stringify(records, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `多人共用版_v1.3.1_設備檔回紀錄備份_${getLocalTodayStr()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("已匯出 JSON 備份");
+      });
+
+      document.getElementById("btnResetDemo").addEventListener("click", () => {
+        deletedIdsSet.clear();
+        saveDeletedIds();
+        records = DEFAULT_RECORDS.slice();
+        saveRecords(true);
+        renderAll();
+        showToast("已重設為預設範例資料並同步");
+      });
+
+      function refreshCloudBadge() {
+        const url = getEndpoint();
+        const badge = document.getElementById("cloudModeBadge");
+        const status = document.getElementById("syncStatusText");
+        if (!badge || !status) return;
+        if (url) {
+          badge.textContent = "共用雲端已連結";
+          badge.className = "tag tag-ok";
+          status.textContent = "狀態：多人共用雲端模式 · 手機新增/刪除雙向同步";
+        } else {
+          badge.textContent = "本機模式";
+          badge.className = "tag tag-info";
+          status.textContent = "狀態：本機即時儲存（可填共用網址或合併 JSON）";
+        }
+      }
+
+      function mergeRecordsList(incomingList) {
+        if (!Array.isArray(incomingList)) return 0;
+        const map = new Map();
+        records.forEach(r => {
+          if (r && r.id && !deletedIdsSet.has(String(r.id))) {
+            map.set(String(r.id), r);
+          }
+        });
+        let added = 0;
+        incomingList.forEach(item => {
+          if (!item || !item.id) return;
+          const sid = String(item.id);
+          if (deletedIdsSet.has(sid)) return;
+          if (!map.has(sid)) {
+            map.set(sid, { ...item, id: sid });
+            added++;
+          } else {
+            map.set(sid, { ...map.get(sid), ...item, id: sid });
+          }
+        });
+        records = Array.from(map.values()).sort((a, b) => String(b.id).localeCompare(String(a.id)));
+        return added;
+      }
+
+      async function sendCloudMutation(payload) {
+        const url = getEndpoint();
+        if (!url) return false;
+        try {
+          const resp = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payload)
+          });
+          if (resp.type === "opaque") return true;
+          if (!resp.ok) return false;
+          const text = await resp.text();
+          if (!text) return true;
+          try {
+            const json = JSON.parse(text);
+            if (json && json.ok === false) return false;
+          } catch (e) {}
+          return true;
+        } catch (err) {
+          try {
+            await fetch(url, {
+              method: "POST",
+              mode: "no-cors",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify(payload)
+            });
+            return true;
+          } catch (err2) {
+            return false;
+          }
+        }
+      }
+
+      async function pushRecordToCloud(rec) {
+        await sendCloudMutation({
+          action: "upsert",
+          record: rec,
+          syncedAt: new Date().toISOString()
+        });
+      }
+
+      async function deleteRecordFromCloud(id) {
+        if (!id) return false;
+        return await sendCloudMutation({
+          action: "delete",
+          id: String(id),
+          syncedAt: new Date().toISOString()
+        });
+      }
+
+      async function pullRecordsFromCloud(label) {
+        const url = getEndpoint();
+        if (!url) {
+          showToast("請先填入共用同步網址");
+          return;
+        }
+        try {
+          showToast("正在拉取雲端最新資料...");
+          const sep = url.includes("?") ? "&" : "?";
+          const resp = await fetch(`${url}${sep}_ts=${Date.now()}`, { method: "GET" });
+          if (!resp.ok) throw new Error("HTTP " + resp.status);
+          const data = await resp.json();
+          const list = Array.isArray(data) ? data : (Array.isArray(data.records) ? data.records : []);
+          const localPhotoMap = new Map();
+          records.forEach(r => {
+            if (r && r.id && r.photoDataUrl) localPhotoMap.set(String(r.id), r.photoDataUrl);
+          });
+
+          records = list
+            .filter(item => item && item.id && !deletedIdsSet.has(String(item.id)))
+            .map(item => ({
+              ...item,
+              id: String(item.id),
+              photoDataUrl: item.photoDataUrl || localPhotoMap.get(String(item.id)) || ""
+            }))
+            .sort((a, b) => String(b.id).localeCompare(String(a.id)));
+
+          saveRecords(true);
+          renderAll();
+          showToast(`${label || "雲端同步"}完成（目前共 ${records.length} 筆）`);
+        } catch (err) {
+          showToast("雲端拉取失敗，請確認網址權限或部署狀態");
+        }
+      }
+
+      document.getElementById("btnSaveEndpoint").addEventListener("click", () => {
+        const val = document.getElementById("sharedEndpointUrl").value.trim();
+        setEndpoint(val);
+        showToast(val ? "已儲存共用同步網址" : "已清除共用網址");
+      });
+
+      document.getElementById("btnClearEndpoint").addEventListener("click", () => {
+        document.getElementById("sharedEndpointUrl").value = "";
+        setEndpoint("");
+        showToast("已切回本機模式");
+      });
+
+      document.getElementById("btnPullCloud").addEventListener("click", () => pullRecordsFromCloud("拉取雲端資料"));
+
+      document.getElementById("btnImportJson").addEventListener("click", () => {
+        document.getElementById("importJsonInput").click();
+      });
+
+      document.getElementById("importJsonInput").addEventListener("change", e => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(String(reader.result || "[]"));
+            const list = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.records) ? parsed.records : []);
+            const added = mergeRecordsList(list);
+            saveRecords(true);
+            renderAll();
+            showToast(`已合併 ${added} 筆紀錄（累積 ${records.length} 筆）`);
+          } catch (err) {
+            showToast("JSON 格式無法解析");
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = "";
+      });
+
+      loadRecords();
+      document.getElementById("sharedEndpointUrl").value = getEndpoint();
+      refreshCloudBadge();
+      document.getElementById("lastSyncTime").textContent = "就緒 " + nowTimeStr();
+      renderAll();
+    })();
+  </script>
+</body>
+</html>
