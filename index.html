@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>拉菲爾診所｜設備異常快填與後台調閱系統</title>
+  <style>
+    :root {
+      --primary: #1e5c8a;
+      --primary-dark: #154366;
+      --bg: #f4f7fa;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #dce3ec;
+      --success: #15803d;
+      --danger: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding-bottom: 84px;
+    }
+    header {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #fff;
+      padding: 18px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+    header h1 { margin: 0; font-size: 1.2rem; font-weight: 700; }
+    header p { margin: 4px 0 0; font-size: 0.85rem; opacity: 0.9; }
+    .container { max-width: 960px; margin: 16px auto; padding: 0 14px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .card h2 { margin: 0 0 14px; font-size: 1.05rem; color: var(--primary-dark); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    label { font-size: 0.88rem; font-weight: 600; }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      background: #fff;
+      color: var(--text);
+    }
+    textarea { min-height: 80px; resize: vertical; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 11px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-secondary { background: #e5ecf2; color: var(--primary-dark); }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+    .stat-box {
+      background: #f0f6fb;
+      border: 1px solid #c7dcef;
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+    .stat-box .num { font-size: 1.5rem; font-weight: 800; color: var(--primary-dark); }
+    .stat-box .lbl { font-size: 0.82rem; color: var(--muted); }
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 10px; }
+    .preview-box { border: 1px dashed var(--border); border-radius: 8px; padding: 10px; text-align: center; background: #fafbfd; }
+    .preview-box img, .preview-box video { max-width: 100%; max-height: 200px; border-radius: 6px; margin-top: 6px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th, td { border-bottom: 1px solid var(--border); padding: 8px 10px; text-align: left; }
+    th { background: #f3f6f9; color: var(--primary-dark); white-space: nowrap; }
+    .table-wrap { overflow-x: auto; }
+    .status-msg { margin-top: 10px; font-size: 0.9rem; font-weight: 600; }
+    .ok { color: var(--success); }
+    .err { color: var(--danger); }
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      z-index: 30;
+    }
+    .nav-btn {
+      padding: 12px 6px;
+      border: none;
+      background: transparent;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .nav-btn.active { color: var(--primary); background: #eef5fb; border-top: 3px solid var(--primary); }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>拉菲爾診所｜設備異常快填與後台調閱系統</h1>
+    <p>線上多人共用版・即時記錄與雲端統計同步</p>
+  </header>
+
+  <div class="container">
+    <!-- 分頁 1：一頁快填 -->
+    <section id="tab-fill" class="card">
+      <h2>一頁快填</h2>
+      <form id="quickForm">
+        <div class="grid">
+          <div class="field">
+            <label for="recordDate">填寫日期</label>
+            <input type="date" id="recordDate" required />
+          </div>
+          <div class="field">
+            <label for="patientName">病患姓名</label>
+            <input type="text" id="patientName" placeholder="請輸入姓名" required />
+          </div>
+          <div class="field">
+            <label for="chartNo">病歷號</label>
+            <input type="text" id="chartNo" placeholder="例如：R00123" required />
+          </div>
+          <div class="field">
+            <label for="stage">檢測階段</label>
+            <select id="stage">
+              <option value="前測">前測</option>
+              <option value="療程中">療程中</option>
+              <option value="後測">後測</option>
+              <option value="日常巡檢">日常巡檢</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="signedOff">是否簽核</label>
+            <select id="signedOff">
+              <option value="已簽核">已簽核</option>
+              <option value="待簽核">待簽核</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="prevDate">前次異常日期</label>
+            <input type="date" id="prevDate" />
+          </div>
+          <div class="field">
+            <label for="abnormalGroup">異常類別</label>
+            <select id="abnormalGroup">
+              <option value="訊號／感測異常">訊號／感測異常</option>
+              <option value="輸出／能量異常">輸出／能量異常</option>
+              <option value="連線／系統異常">連線／系統異常</option>
+              <option value="配件／外觀異常">配件／外觀異常</option>
+              <option value="其他">其他</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="triggerType">觸發情境</label>
+            <select id="triggerType">
+              <option value="開機／初始化">開機／初始化</option>
+              <option value="調整參數時">調整參數時</option>
+              <option value="療程進行中">療程進行中</option>
+              <option value="其他">其他</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="actionStatus">處理狀態</label>
+            <select id="actionStatus">
+              <option value="已排除">已排除</option>
+              <option value="持續觀察">持續觀察</option>
+              <option value="待工程／廠商處理">待工程／廠商處理</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="field">
+            <label for="photoInput">照片預覽（僅供現場檢視與記錄檔名）</label>
+            <input type="file" id="photoInput" accept="image/*" />
+          </div>
+          <div class="field">
+            <label for="videoInput">影片預覽（僅供現場檢視與記錄檔名）</label>
+            <input type="file" id="videoInput" accept="video/*" />
+          </div>
+        </div>
+
+        <div class="preview-grid">
+          <div class="preview-box">
+            <div><strong>照片預覽：</strong><span id="photoNameDisplay">尚未選擇</span></div>
+            <img id="photoPreview" class="hidden" alt="照片預覽" />
+          </div>
+          <div class="preview-box">
+            <div><strong>影片預覽：</strong><span id="videoNameDisplay">尚未選擇</span></div>
+            <video id="videoPreview" class="hidden" controls></video>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:12px;">
+          <label for="notes">異常描述與備註</label>
+          <textarea id="notes" placeholder="請簡述異常現象、數值或處理方式..."></textarea>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn btn-primary">儲存並同步到後台</button>
+          <button type="button" id="resetBtn" class="btn btn-secondary">清空表單</button>
+        </div>
+        <div id="formStatus" class="status-msg"></div>
+      </form>
+    </section>
+
+    <!-- 分頁 2：後台調閱 -->
+    <section id="tab-lookup" class="card hidden">
+      <h2>後台調閱</h2>
+      <div class="grid">
+        <div class="field">
+          <label for="searchKeyword">關鍵字搜尋（姓名 / 病歷號 / 類別 / 備註）</label>
+          <input type="text" id="searchKeyword" placeholder="輸入關鍵字篩選..." />
+        </div>
+        <div class="field">
+          <label for="filterStage">依階段篩選</label>
+          <select id="filterStage">
+            <option value="">全部階段</option>
+            <option value="前測">前測</option>
+            <option value="療程中">療程中</option>
+            <option value="後測">後測</option>
+            <option value="日常巡檢">日常巡檢</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions" style="margin-bottom:12px;">
+        <button type="button" id="refreshLookupBtn" class="btn btn-secondary">☁️ 拉取雲端最新資料</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>病患姓名</th>
+              <th>病歷號</th>
+              <th>階段</th>
+              <th>異常類別</th>
+              <th>狀態</th>
+              <th>照片/影片檔名</th>
+              <th>備註</th>
+            </tr>
+          </thead>
+          <tbody id="lookupTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 分頁 3：後台總覽 -->
+    <section id="tab-overview" class="card hidden">
+      <h2>後台總覽</h2>
+      <div class="stats">
+        <div class="stat-box">
+          <div class="num" id="todayCount">0</div>
+          <div class="lbl">當天檔回數</div>
+        </div>
+        <div class="stat-box">
+          <div class="num" id="monthCount">0</div>
+          <div class="lbl">當月檔回數</div>
+        </div>
+        <div class="stat-box">
+          <div class="num" id="totalCount">0</div>
+          <div class="lbl">累積檔回數</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="syncUrlInput">共用同步網址（Google Apps Script /exec 網址）</label>
+        <input type="url" id="syncUrlInput" placeholder="https://script.google.com/macros/s/.../exec" />
+      </div>
+      <div class="actions">
+        <button type="button" id="saveSyncUrlBtn" class="btn btn-primary">儲存共用網址</button>
+        <button type="button" id="pullCloudBtn" class="btn btn-secondary">☁️ 拉取雲端最新資料</button>
+      </div>
+      <div id="syncStatus" class="status-msg"></div>
+    </section>
+  </div>
+
+  <nav class="bottom-nav">
+    <button type="button" class="nav-btn active" data-tab="tab-fill">一頁快填</button>
+    <button type="button" class="nav-btn" data-tab="tab-lookup">後台調閱</button>
+    <button type="button" class="nav-btn" data-tab="tab-overview">後台總覽</button>
+  </nav>
+
+  <script>
+    const STORAGE_RECORDS_KEY = "raphael_eq_records_v1";
+    const STORAGE_URL_KEY = "raphael_eq_sync_url_v1";
+
+    let records = JSON.parse(localStorage.getItem(STORAGE_RECORDS_KEY) || "[]");
+    let syncUrl = localStorage.getItem(STORAGE_URL_KEY) || "";
+    let selectedPhotoName = "";
+    let selectedVideoName = "";
+
+    const recordDateEl = document.getElementById("recordDate");
+    recordDateEl.value = new Date().toISOString().slice(0, 10);
+
+    const syncUrlInput = document.getElementById("syncUrlInput");
+    syncUrlInput.value = syncUrl;
+
+    // 分頁切換
+    document.querySelectorAll(".nav-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        const target = btn.dataset.tab;
+        ["tab-fill", "tab-lookup", "tab-overview"].forEach(id => {
+          document.getElementById(id).classList.toggle("hidden", id !== target);
+        });
+        if (target === "tab-lookup") renderLookup();
+        if (target === "tab-overview") renderStats();
+      });
+    });
+
+    // 照片與影片預覽
+    document.getElementById("photoInput").addEventListener("change", e => {
+      const file = e.target.files[0];
+      const img = document.getElementById("photoPreview");
+      const disp = document.getElementById("photoNameDisplay");
+      if (file) {
+        selectedPhotoName = file.name;
+        disp.textContent = file.name;
+        img.src = URL.createObjectURL(file);
+        img.classList.remove("hidden");
+      } else {
+        selectedPhotoName = "";
+        disp.textContent = "尚未選擇";
+        img.classList.add("hidden");
+      }
+    });
+
+    document.getElementById("videoInput").addEventListener("change", e => {
+      const file = e.target.files[0];
+      const vid = document.getElementById("videoPreview");
+      const disp = document.getElementById("videoNameDisplay");
+      if (file) {
+        selectedVideoName = file.name;
+        disp.textContent = file.name;
+        vid.src = URL.createObjectURL(file);
+        vid.classList.remove("hidden");
+      } else {
+        selectedVideoName = "";
+        disp.textContent = "尚未選擇";
+        vid.classList.add("hidden");
+      }
+    });
+
+    function saveLocalRecords() {
+      localStorage.setItem(STORAGE_RECORDS_KEY, JSON.stringify(records));
+      renderStats();
+      renderLookup();
+    }
+
+    function renderStats() {
+      const now = new Date();
+      const todayStr = now.toISOString().slice(0, 10);
+      const monthStr = todayStr.slice(0, 7);
+
+      const todayCount = records.filter(r => (r.recordDate || "").startsWith(todayStr)).length;
+      const monthCount = records.filter(r => (r.recordDate || "").startsWith(monthStr)).length;
+      const totalCount = records.length;
+
+      document.getElementById("todayCount").textContent = todayCount;
+      document.getElementById("monthCount").textContent = monthCount;
+      document.getElementById("totalCount").textContent = totalCount;
+
+      const statusEl = document.getElementById("syncStatus");
+      if (syncUrl) {
+        statusEl.textContent = "已設定共用同步網址：" + syncUrl;
+        statusEl.className = "status-msg ok";
+      } else {
+        statusEl.textContent = "尚未設定共用同步網址（目前僅存於本機，貼上 /exec 網址並儲存即可多人同步）。";
+        statusEl.className = "status-msg err";
+      }
+    }
+
+    function renderLookup() {
+      const kw = (document.getElementById("searchKeyword").value || "").trim().toLowerCase();
+      const stg = document.getElementById("filterStage").value;
+      const tbody = document.getElementById("lookupTableBody");
+
+      const filtered = records.filter(r => {
+        const matchStage = !stg || r.stage === stg;
+        const blob = `${r.patientName || ""} ${r.chartNo || ""} ${r.abnormalGroup || ""} ${r.notes || ""}`.toLowerCase();
+        const matchKw = !kw || blob.includes(kw);
+        return matchStage && matchKw;
+      });
+
+      if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#6b7280;">目前尚無符合的紀錄</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.slice().reverse().map(r => `
+        <tr>
+          <td>${escapeHtml(r.recordDate || "")}</td>
+          <td>${escapeHtml(r.patientName || "")}</td>
+          <td>${escapeHtml(r.chartNo || "")}</td>
+          <td>${escapeHtml(r.stage || "")}</td>
+          <td>${escapeHtml(r.abnormalGroup || "")}</td>
+          <td>${escapeHtml(r.actionStatus || "")}</td>
+          <td>${escapeHtml([r.photoName, r.videoName].filter(Boolean).join(" / ") || "-")}</td>
+          <td>${escapeHtml(r.notes || "")}</td>
+        </tr>
+      `).join("");
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, m => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[m]));
+    }
+
+    // 儲存共用網址
+    document.getElementById("saveSyncUrlBtn").addEventListener("click", () => {
+      const val = syncUrlInput.value.trim();
+      syncUrl = val;
+      localStorage.setItem(STORAGE_URL_KEY, syncUrl);
+      renderStats();
+    });
+
+    // 拉取雲端資料
+    async function pullCloudData() {
+      const statusEl = document.getElementById("syncStatus");
+      if (!syncUrl) {
+        statusEl.textContent = "請先輸入並儲存 Google Apps Script /exec 網址。";
+        statusEl.className = "status-msg err";
+        return;
+      }
+      statusEl.textContent = "正在拉取雲端最新資料...";
+      statusEl.className = "status-msg";
+      try {
+        const res = await fetch(syncUrl);
+        const data = await res.json();
+        if (data && Array.isArray(data.records)) {
+          records = data.records;
+          saveLocalRecords();
+          statusEl.textContent = `已同步雲端資料，共 ${records.length} 筆紀錄。`;
+          statusEl.className = "status-msg ok";
+        } else {
+          statusEl.textContent = "雲端回傳格式異常，請確認 Apps Script 部署狀態。";
+          statusEl.className = "status-msg err";
+        }
+      } catch (err) {
+        statusEl.textContent = "拉取失敗，請確認網址權限（誰可以存取：所有人）與網路連線。";
+        statusEl.className = "status-msg err";
+      }
+    }
+
+    document.getElementById("pullCloudBtn").addEventListener("click", pullCloudData);
+    document.getElementById("refreshLookupBtn").addEventListener("click", pullCloudData);
+    document.getElementById("searchKeyword").addEventListener("input", renderLookup);
+    document.getElementById("filterStage").addEventListener("change", renderLookup);
+
+    // 表單送出
+    document.getElementById("quickForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const statusEl = document.getElementById("formStatus");
+      const record = {
+        id: "REC-" + Date.now(),
+        recordDate: document.getElementById("recordDate").value,
+        patientName: document.getElementById("patientName").value.trim(),
+        chartNo: document.getElementById("chartNo").value.trim(),
+        stage: document.getElementById("stage").value,
+        signedOff: document.getElementById("signedOff").value,
+        prevDate: document.getElementById("prevDate").value,
+        abnormalGroup: document.getElementById("abnormalGroup").value,
+        triggerType: document.getElementById("triggerType").value,
+        actionStatus: document.getElementById("actionStatus").value,
+        videoName: selectedVideoName,
+        photoName: selectedPhotoName,
+        notes: document.getElementById("notes").value.trim(),
+        updatedAt: new Date().toISOString()
+      };
+
+      records.push(record);
+      saveLocalRecords();
+
+      if (!syncUrl) {
+        statusEl.textContent = "已存於本機；尚未設定共用同步網址，請至「後台總覽」設定後再同步。";
+        statusEl.className = "status-msg err";
+        return;
+      }
+
+      statusEl.textContent = "正在同步到 Google 試算表...";
+      statusEl.className = "status-msg";
+
+      try {
+        await fetch(syncUrl, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ record })
+        });
+        statusEl.textContent = "已儲存並送出雲端同步！可到「後台總覽」按「拉取雲端最新資料」確認。";
+        statusEl.className = "status-msg ok";
+      } catch (err) {
+        statusEl.textContent = "已存於本機，但雲端送出失敗，請檢查共用同步網址。";
+        statusEl.className = "status-msg err";
+      }
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      document.getElementById("quickForm").reset();
+      recordDateEl.value = new Date().toISOString().slice(0, 10);
+      selectedPhotoName = "";
+      selectedVideoName = "";
+      document.getElementById("photoNameDisplay").textContent = "尚未選擇";
+      document.getElementById("videoNameDisplay").textContent = "尚未選擇";
+      document.getElementById("photoPreview").classList.add("hidden");
+      document.getElementById("videoPreview").classList.add("hidden");
+      document.getElementById("formStatus").textContent = "";
+    });
+
+    renderStats();
+    renderLookup();
+  </script>
+</body>
+</html>
