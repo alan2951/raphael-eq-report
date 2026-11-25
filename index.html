@@ -2,538 +2,1433 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>拉菲爾診所｜設備異常快填與後台調閱系統</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>設備異常快填與後台調閱系統（多人共用版 v1.1）</title>
   <style>
     :root {
-      --primary: #1e5c8a;
-      --primary-dark: #154366;
-      --bg: #f4f7fa;
+      --bg: #f3f5f7;
       --card: #ffffff;
-      --text: #1f2937;
-      --muted: #6b7280;
-      --border: #dce3ec;
-      --success: #15803d;
-      --danger: #b91c1c;
+      --ink: #1e293b;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --brand: #2c3e50;
+      --brand-2: #1b4f72;
+      --accent: #0f766e;
+      --alert-bg: #fef2f2;
+      --alert-fg: #991b1b;
+      --alert-bd: #fecaca;
+      --ok-bg: #f0fdf4;
+      --ok-fg: #166534;
+      --warn-bg: #fffbeb;
+      --warn-fg: #92400e;
+      --radius: 14px;
     }
-    * { box-sizing: border-box; }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
       background: var(--bg);
-      color: var(--text);
-      padding-bottom: 84px;
+      color: var(--ink);
+      padding-bottom: 88px;
     }
-    header {
-      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-      color: #fff;
-      padding: 18px 20px;
+
+    .topbar {
       position: sticky;
       top: 0;
-      z-index: 20;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      z-index: 30;
+      background: var(--brand);
+      color: #fff;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.14);
     }
-    header h1 { margin: 0; font-size: 1.2rem; font-weight: 700; }
-    header p { margin: 4px 0 0; font-size: 0.85rem; opacity: 0.9; }
-    .container { max-width: 960px; margin: 16px auto; padding: 0 14px; }
+    .topbar-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+    .topbar-sub {
+      font-size: 11px;
+      color: #cbd5e1;
+      margin-top: 2px;
+    }
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sync-btn {
+      background: #0d9488;
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .sync-btn:active { transform: scale(0.97); }
+    .pill-badge {
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .sync-strip {
+      background: #e6fffa;
+      border-bottom: 1px solid #99f6e4;
+      color: #115e59;
+      font-size: 12px;
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 14px 14px 24px;
+    }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
     .card {
       background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 18px;
-      margin-bottom: 16px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
     }
-    .card h2 { margin: 0 0 14px; font-size: 1.05rem; color: var(--primary-dark); }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-    label { font-size: 0.88rem; font-weight: 600; }
-    input, select, textarea {
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--brand);
+      margin: 0 0 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .card-hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 0 12px;
+      line-height: 1.45;
+    }
+
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+
+    label.lbl {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+    .req { color: #dc2626; margin-left: 2px; }
+    .opt-tag {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      background: #f1f5f9;
+      padding: 1px 6px;
+      border-radius: 6px;
+      margin-left: 6px;
+    }
+
+    input[type="text"],
+    input[type="date"],
+    input[type="search"],
+    select,
+    textarea {
       width: 100%;
-      padding: 10px 12px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 0.95rem;
+      padding: 11px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 15px;
+      color: var(--ink);
       background: #fff;
-      color: var(--text);
     }
-    textarea { min-height: 80px; resize: vertical; }
-    .btn {
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--brand-2);
+      box-shadow: 0 0 0 3px rgba(27, 79, 114, 0.12);
+    }
+
+    .row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 480px) {
+      .row-2 { grid-template-columns: 1fr; }
+    }
+
+    .media-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 520px) {
+      .media-grid { grid-template-columns: 1fr; }
+    }
+
+    .capture-box {
+      border: 1.5px dashed #94a3b8;
+      border-radius: 12px;
+      background: #f8fafc;
+      padding: 12px;
+      text-align: center;
+      cursor: pointer;
+    }
+    .capture-box.has-file {
+      border-style: solid;
+      border-color: var(--accent);
+      background: #f0fdfa;
+    }
+    .capture-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
-      padding: 11px 16px;
+      width: 100%;
+      padding: 12px 10px;
+      border-radius: 9px;
       border: none;
+      background: var(--brand-2);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .capture-btn.secondary {
+      background: #334155;
+    }
+    .file-direct-input {
+      margin-top: 8px;
+      width: 100%;
+      font-size: 12px;
+      color: #334155;
+    }
+    .mock-attach-btn {
+      margin-top: 8px;
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 7px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #0f766e;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .capture-meta {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #475569;
+      word-break: break-all;
+      line-height: 1.4;
+    }
+    .preview-media {
+      margin-top: 8px;
+      max-height: 170px;
+      width: 100%;
+      object-fit: cover;
       border-radius: 8px;
-      font-size: 0.95rem;
+      display: none;
+      background: #000;
+    }
+    .preview-media.show { display: block; }
+
+    .risk-banner {
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 8px;
+      border: 1px solid transparent;
+    }
+    .risk-high { background: var(--alert-bg); color: var(--alert-fg); border-color: var(--alert-bd); }
+    .risk-ok { background: var(--ok-bg); color: var(--ok-fg); border-color: #bbf7d0; }
+    .risk-warn { background: var(--warn-bg); color: var(--warn-fg); border-color: #fde68a; }
+
+    details.more-box {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #f8fafc;
+      padding: 10px 12px;
+      margin-top: 12px;
+    }
+    details.more-box summary {
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--brand-2);
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    details.more-box[open] summary { margin-bottom: 10px; }
+
+    .submit-btn {
+      width: 100%;
+      padding: 14px 16px;
+      border: none;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(15, 118, 110, 0.25);
+      margin-top: 14px;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    @media (min-width: 560px) {
+      .kpi-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    .kpi-box {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .kpi-label { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .kpi-val { font-size: 20px; font-weight: 800; color: var(--brand-2); margin-top: 4px; }
+    .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .rec-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+    .rec-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .rec-title { font-size: 15px; font-weight: 700; color: var(--ink); }
+    .rec-meta { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .tag-high { background: var(--alert-bg); color: var(--alert-fg); }
+    .tag-ok { background: var(--ok-bg); color: var(--ok-fg); }
+    .tag-warn { background: var(--warn-bg); color: var(--warn-fg); }
+    .tag-info { background: #e0f2fe; color: #075985; }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .btn-sm {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: var(--ink);
+      font-size: 12px;
       font-weight: 600;
       cursor: pointer;
     }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-primary:hover { background: var(--primary-dark); }
-    .btn-secondary { background: #e5ecf2; color: var(--primary-dark); }
-    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
-    .stat-box {
-      background: #f0f6fb;
-      border: 1px solid #c7dcef;
-      border-radius: 10px;
-      padding: 12px;
-      text-align: center;
+    .btn-sm.primary {
+      background: var(--brand-2);
+      border-color: var(--brand-2);
+      color: #fff;
     }
-    .stat-box .num { font-size: 1.5rem; font-weight: 800; color: var(--primary-dark); }
-    .stat-box .lbl { font-size: 0.82rem; color: var(--muted); }
-    .preview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 10px; }
-    .preview-box { border: 1px dashed var(--border); border-radius: 8px; padding: 10px; text-align: center; background: #fafbfd; }
-    .preview-box img, .preview-box video { max-width: 100%; max-height: 200px; border-radius: 6px; margin-top: 6px; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-    th, td { border-bottom: 1px solid var(--border); padding: 8px 10px; text-align: left; }
-    th { background: #f3f6f9; color: var(--primary-dark); white-space: nowrap; }
-    .table-wrap { overflow-x: auto; }
-    .status-msg { margin-top: 10px; font-size: 0.9rem; font-weight: 600; }
-    .ok { color: var(--success); }
-    .err { color: var(--danger); }
+    .btn-sm.teal {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .btn-sm.danger {
+      background: #fff;
+      border-color: #fca5a5;
+      color: #b91c1c;
+    }
+
     .bottom-nav {
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
+      z-index: 40;
       background: #fff;
-      border-top: 1px solid var(--border);
+      border-top: 1px solid var(--line);
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      z-index: 30;
+      grid-template-columns: 1fr 1fr 1fr;
+      padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
     }
     .nav-btn {
-      padding: 12px 6px;
       border: none;
       background: transparent;
-      font-size: 0.9rem;
-      font-weight: 600;
+      padding: 6px 4px;
+      border-radius: 10px;
       color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .nav-btn.active {
+      color: var(--brand-2);
+      background: #eff6ff;
+    }
+
+    .photo-nav-bar {
+      display: none;
+      margin-top: 8px;
+      gap: 6px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .photo-nav-bar.show {
+      display: flex;
+    }
+    .photo-mini-btn {
+      padding: 5px 10px;
+      border-radius: 7px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: var(--brand-2);
+      font-size: 12px;
+      font-weight: 700;
       cursor: pointer;
     }
-    .nav-btn.active { color: var(--primary); background: #eef5fb; border-top: 3px solid var(--primary); }
-    .hidden { display: none; }
+    .photo-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      background: rgba(15, 23, 42, 0.92);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .photo-modal.open {
+      display: flex;
+    }
+    .photo-modal-top {
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #fff;
+      margin-bottom: 10px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .photo-modal-img-wrap {
+      flex: 1;
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+    }
+    .photo-modal-img-wrap img {
+      max-width: 100%;
+      max-height: 78vh;
+      border-radius: 10px;
+      transition: transform 0.2s ease;
+      object-fit: contain;
+    }
+    .photo-modal-controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .photo-modal-btn {
+      padding: 8px 14px;
+      border-radius: 9px;
+      border: 1px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.14);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .toast {
+      position: fixed;
+      top: 74px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0f172a;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      z-index: 60;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>拉菲爾診所｜設備異常快填與後台調閱系統</h1>
-    <p>線上多人共用版・即時記錄與雲端統計同步</p>
+
+  <header class="topbar">
+    <div>
+      <div class="topbar-title">設備異常快填與同步調閱 <span style="font-size:11px;font-weight:600;background:rgba(255,255,255,0.16);padding:2px 7px;border-radius:999px;vertical-align:middle;">多人共用版 v1.1</span></div>
+      <div class="topbar-sub">專記當天檔回異常 · 業務快填・照片快速導覽・後台分「當天／當月／累積」統計</div>
+    </div>
+    <div class="topbar-actions">
+      <button type="button" class="sync-btn" id="btnTopSync">🔄 同步作業</button>
+      <div class="pill-badge" id="totalCountBadge">已存 0 筆</div>
+    </div>
   </header>
 
-  <div class="container">
-    <!-- 分頁 1：一頁快填 -->
-    <section id="tab-fill" class="card">
-      <h2>一頁快填</h2>
-      <form id="quickForm">
-        <div class="grid">
-          <div class="field">
-            <label for="recordDate">填寫日期</label>
-            <input type="date" id="recordDate" required />
+  <div class="sync-strip" id="syncStrip">
+    <span id="syncStatusText">狀態：已就緒 · 本機即時儲存</span>
+    <span id="lastSyncTime">--:--:--</span>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <main class="container">
+
+    <!-- TAB 1: 一頁快填 -->
+    <section class="view active" id="view-survey">
+      <form id="surveyForm">
+        <div class="card">
+          <div class="card-title">
+            <span>1. 患者基本資料</span>
+            <span class="tag tag-info">必填 2 欄</span>
           </div>
-          <div class="field">
-            <label for="patientName">病患姓名</label>
-            <input type="text" id="patientName" placeholder="請輸入姓名" required />
-          </div>
-          <div class="field">
-            <label for="chartNo">病歷號</label>
-            <input type="text" id="chartNo" placeholder="例如：R00123" required />
-          </div>
-          <div class="field">
-            <label for="stage">檢測階段</label>
-            <select id="stage">
-              <option value="前測">前測</option>
-              <option value="療程中">療程中</option>
-              <option value="後測">後測</option>
-              <option value="日常巡檢">日常巡檢</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="signedOff">是否簽核</label>
-            <select id="signedOff">
-              <option value="已簽核">已簽核</option>
-              <option value="待簽核">待簽核</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="prevDate">前次異常日期</label>
-            <input type="date" id="prevDate" />
-          </div>
-          <div class="field">
-            <label for="abnormalGroup">異常類別</label>
-            <select id="abnormalGroup">
-              <option value="訊號／感測異常">訊號／感測異常</option>
-              <option value="輸出／能量異常">輸出／能量異常</option>
-              <option value="連線／系統異常">連線／系統異常</option>
-              <option value="配件／外觀異常">配件／外觀異常</option>
-              <option value="其他">其他</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="triggerType">觸發情境</label>
-            <select id="triggerType">
-              <option value="開機／初始化">開機／初始化</option>
-              <option value="調整參數時">調整參數時</option>
-              <option value="療程進行中">療程進行中</option>
-              <option value="其他">其他</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="actionStatus">處理狀態</label>
-            <select id="actionStatus">
-              <option value="已排除">已排除</option>
-              <option value="持續觀察">持續觀察</option>
-              <option value="待工程／廠商處理">待工程／廠商處理</option>
-            </select>
+          <p class="card-hint">只記「當天被我們檔回」的異常件；檢測正常才出貨的不用特地記。</p>
+
+          <div class="row-2">
+            <div class="field">
+              <label class="lbl" for="patientName">患者姓名<span class="req">*</span></label>
+              <input type="text" id="patientName" placeholder="例如：陳○華" required autocomplete="off" />
+            </div>
+            <div class="field">
+              <label class="lbl" for="chartNo">病歷號<span class="req">*</span></label>
+              <input type="text" id="chartNo" placeholder="例如：M123456" required autocomplete="off" />
+            </div>
           </div>
         </div>
 
-        <div class="grid">
-          <div class="field">
-            <label for="photoInput">照片預覽（僅供現場檢視與記錄檔名）</label>
-            <input type="file" id="photoInput" accept="image/*" />
+        <div class="card">
+          <div class="card-title">
+            <span>2. 異常錄影 & 拍檢查表</span>
+            <span class="tag tag-info">約 20 秒錄影</span>
           </div>
-          <div class="field">
-            <label for="videoInput">影片預覽（僅供現場檢視與記錄檔名）</label>
-            <input type="file" id="videoInput" accept="video/*" />
-          </div>
-        </div>
+          <p class="card-hint">點選按鈕或下方檔案選擇器即可附加約 20 秒異常影片與檢查表照片，並支援即時預覽與快速導覽。</p>
 
-        <div class="preview-grid">
-          <div class="preview-box">
-            <div><strong>照片預覽：</strong><span id="photoNameDisplay">尚未選擇</span></div>
-            <img id="photoPreview" class="hidden" alt="照片預覽" />
-          </div>
-          <div class="preview-box">
-            <div><strong>影片預覽：</strong><span id="videoNameDisplay">尚未選擇</span></div>
-            <video id="videoPreview" class="hidden" controls></video>
-          </div>
-        </div>
+          <div class="media-grid">
+            <div class="capture-box" id="videoBox">
+              <button type="button" class="capture-btn" id="btnPickVideo">🎥 選擇／錄製影片（約20秒）</button>
+              <input type="file" id="videoInput" class="file-direct-input" accept="video/*" />
+                            <div class="capture-meta" id="videoMeta">尚未附加錄影檔</div>
+              <video id="videoPreview" class="preview-media" controls playsinline></video>
+            </div>
 
-        <div class="field" style="margin-top:12px;">
-          <label for="notes">異常描述與備註</label>
-          <textarea id="notes" placeholder="請簡述異常現象、數值或處理方式..."></textarea>
-        </div>
+            <div class="capture-box" id="photoBox">
+              <button type="button" class="capture-btn secondary" id="btnPickPhoto">📋 選擇／拍攝檢查表照片</button>
+              <input type="file" id="photoInput" class="file-direct-input" accept="image/*" />
+                            <div class="capture-meta" id="photoMeta">尚未附加檢查表照片</div>
+              <img id="photoPreview" class="preview-media" alt="檢查表預覽" title="點一下放大快速導覽" />
+              <div class="photo-nav-bar" id="photoNavBar">
+                <button type="button" class="photo-mini-btn" id="btnZoomPhoto">🔍 放大導覽檢查表</button>
+              </div>
+            </div>
+          </div>
 
-        <div class="actions">
-          <button type="submit" class="btn btn-primary">儲存並同步到後台</button>
-          <button type="button" id="resetBtn" class="btn btn-secondary">清空表單</button>
+          <div class="row-2" style="margin-top:12px;">
+            <div class="field">
+              <label class="lbl" for="stageMain">檢測／回報階段</label>
+              <select id="stageMain">
+                <option value="交機前點檢">交機前點檢</option>
+                <option value="回診前點檢">回診前點檢</option>
+                <option value="更換貼片後檢測">更換貼片後檢測</option>
+                <option value="患者回報異常" selected>患者回報異常</option>
+                <option value="其他階段">其他階段</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="lbl" for="prevDate">
+                前次檢修／交機日<span class="opt-tag">選填·自動算7日內</span>
+              </label>
+              <input type="date" id="prevDate" />
+            </div>
+          </div>
+          <div id="riskPreview" class="risk-banner risk-warn" style="display:none;"></div>
+
+          <details class="more-box">
+            <summary>
+              <span>更多細項（設備編號、組別、觸發方式、處置狀態）</span>
+              <span>展開／收合</span>
+            </summary>
+            <div class="field">
+              <label class="lbl" for="abnormalGroup">異常組別（選填）</label>
+              <input type="text" id="abnormalGroup" placeholder="例如：C組、D組" />
+            </div>
+            <div class="field">
+              <label class="lbl" for="signedOff">是否已簽核放行</label>
+              <select id="signedOff">
+                <option value="是" selected>是</option>
+                <option value="否">否</option>
+              </select>
+            </div>
+            <div class="row-2">
+              <div class="field">
+                <label class="lbl" for="triggerType">觸發方式</label>
+                <select id="triggerType">
+                  <option value="線材繞動／彎折異常" selected>線材繞動／彎折異常</option>
+                  <option value="接頭輕碰／接觸不良">接頭輕碰／接觸不良</option>
+                  <option value="靜態開機／亮光異常">靜態開機／亮光異常</option>
+                  <option value="穿戴活動間歇性中斷">穿戴活動間歇性中斷</option>
+                  <option value="其他／待確認">其他／待確認</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="lbl" for="actionStatus">檔回／處理狀態</label>
+                <select id="actionStatus">
+                  <option value="當天檔回／退回重做" selected>當天檔回／退回重做</option>
+                  <option value="當天檔回／未簽收">當天檔回／未簽收</option>
+                  <option value="後續回報／7日內異常">後續回報／7日內異常</option>
+                  <option value="其他處置">其他處置</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label class="lbl" for="notes">補充說明（選填）</label>
+              <input type="text" id="notes" placeholder="例如：線一繞就斷訊，檢查表已簽名" />
+            </div>
+          </details>
+
+          <button type="submit" class="submit-btn">儲存並同步到後台</button>
         </div>
-        <div id="formStatus" class="status-msg"></div>
       </form>
     </section>
 
-    <!-- 分頁 2：後台調閱 -->
-    <section id="tab-lookup" class="card hidden">
-      <h2>後台調閱</h2>
-      <div class="grid">
-        <div class="field">
-          <label for="searchKeyword">關鍵字搜尋（姓名 / 病歷號 / 類別 / 備註）</label>
-          <input type="text" id="searchKeyword" placeholder="輸入關鍵字篩選..." />
+    <!-- TAB 2: 後天調閱 -->
+    <section class="view" id="view-lookup">
+      <div class="card">
+        <div class="card-title">
+          <span>後天快速調閱（依姓名 / 病歷號 / 設備）</span>
+          <button type="button" class="btn-sm teal" id="btnLookupSync">🔄 同步查詢</button>
         </div>
-        <div class="field">
-          <label for="filterStage">依階段篩選</label>
-          <select id="filterStage">
-            <option value="">全部階段</option>
-            <option value="前測">前測</option>
-            <option value="療程中">療程中</option>
-            <option value="後測">後測</option>
-            <option value="日常巡檢">日常巡檢</option>
-          </select>
-        </div>
-      </div>
-      <div class="actions" style="margin-bottom:12px;">
-        <button type="button" id="refreshLookupBtn" class="btn btn-secondary">☁️ 拉取雲端最新資料</button>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>日期</th>
-              <th>病患姓名</th>
-              <th>病歷號</th>
-              <th>階段</th>
-              <th>異常類別</th>
-              <th>狀態</th>
-              <th>照片/影片檔名</th>
-              <th>備註</th>
-            </tr>
-          </thead>
-          <tbody id="lookupTableBody"></tbody>
-        </table>
-      </div>
-    </section>
+        <p class="card-hint">輸入患者姓名、病歷號或設備關鍵字，即時找出檔回紀錄、20秒錄影檔名與檢查表照片。</p>
 
-    <!-- 分頁 3：後台總覽 -->
-    <section id="tab-overview" class="card hidden">
-      <h2>後台總覽</h2>
-      <div class="stats">
-        <div class="stat-box">
-          <div class="num" id="todayCount">0</div>
-          <div class="lbl">當天檔回數</div>
+        <div class="row-2">
+          <div class="field">
+            <label class="lbl" for="searchKeyword">姓名 / 設備 / 說明關鍵字</label>
+            <input type="search" id="searchKeyword" placeholder="輸入姓名或 EQ 編號..." />
+          </div>
+          <div class="field">
+            <label class="lbl" for="searchChartNo">病歷號篩選</label>
+            <input type="search" id="searchChartNo" placeholder="輸入病歷號..." />
+          </div>
         </div>
-        <div class="stat-box">
-          <div class="num" id="monthCount">0</div>
-          <div class="lbl">當月檔回數</div>
-        </div>
-        <div class="stat-box">
-          <div class="num" id="totalCount">0</div>
-          <div class="lbl">累積檔回數</div>
+        <div class="btn-row" style="margin-top:4px;">
+          <button type="button" class="btn-sm" id="btnClearFilter">清除篩選條件</button>
+          <button type="button" class="btn-sm" id="btnOnlyHighRisk">只看 7日內高風險</button>
         </div>
       </div>
 
-      <div class="field">
-        <label for="syncUrlInput">共用同步網址（Google Apps Script /exec 網址）</label>
-        <input type="url" id="syncUrlInput" placeholder="https://script.google.com/macros/s/.../exec" />
-      </div>
-      <div class="actions">
-        <button type="button" id="saveSyncUrlBtn" class="btn btn-primary">儲存共用網址</button>
-        <button type="button" id="pullCloudBtn" class="btn btn-secondary">☁️ 拉取雲端最新資料</button>
-      </div>
-      <div id="syncStatus" class="status-msg"></div>
+      <div id="lookupResults"></div>
     </section>
-  </div>
+
+    <!-- TAB 3: 後台總覽與同步匯出 -->
+    <section class="view" id="view-backend">
+      <div class="kpi-grid">
+        <div class="kpi-box">
+          <div class="kpi-label">當天檔回數</div>
+          <div class="kpi-val" id="kpiTodayTotal">0</div>
+          <div class="kpi-sub" id="kpiTodayDate">今日 --</div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-label">當月檔回數</div>
+          <div class="kpi-val" id="kpiMonthTotal">0</div>
+          <div class="kpi-sub" id="kpiMonthLabel">本月 --</div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-label">累積檔回數</div>
+          <div class="kpi-val" id="kpiTotal">0</div>
+          <div class="kpi-sub" id="kpiMonthShare">當月佔比 0.0%</div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-label">7日內二次異常</div>
+          <div class="kpi-val" id="kpi7d">0</div>
+          <div class="kpi-sub" id="kpiSignedRate">簽核後仍檔回 --</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>多人共用雲端同步設定（選填）</span>
+          <span class="tag tag-info" id="cloudModeBadge">本機模式</span>
+        </div>
+        <p class="card-hint">填入團隊共用的 Webhook／Google Apps Script 網址後，大家填寫與按「同步作業」就會自動推播與拉取同一份累積資料；未填網址時則以本機儲存＋匯出／匯入合併運作。</p>
+        <div class="field">
+          <label class="lbl" for="sharedEndpointUrl">共用同步網址（Webhook / GAS Web App URL）</label>
+          <input type="text" id="sharedEndpointUrl" placeholder="例如：https://script.google.com/macros/s/xxxxx/exec" autocomplete="off" />
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-sm primary" id="btnSaveEndpoint">儲存共用網址</button>
+          <button type="button" class="btn-sm teal" id="btnPullCloud">☁️ 拉取雲端最新資料</button>
+          <button type="button" class="btn-sm" id="btnClearEndpoint">清除網址（改回本機）</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>後台同步作業與匯出／合併</span>
+        </div>
+        <p class="card-hint">按下「立即同步作業」會重新整理統計、檢查 7 日內高風險件並更新同步時間；也可匯出 CSV／JSON 或匯入他人 JSON 合併累積。</p>
+        <div class="btn-row">
+          <button type="button" class="btn-sm teal" id="btnBackendSync">🔄 立即同步作業</button>
+          <button type="button" class="btn-sm primary" id="btnExportCsv">匯出 CSV（Excel 可開）</button>
+          <button type="button" class="btn-sm" id="btnExportJson">匯出 JSON 備份</button>
+          <button type="button" class="btn-sm" id="btnImportJson">匯入 JSON 合併</button>
+          <input type="file" id="importJsonInput" accept="application/json,.json" style="display:none;" />
+          <button type="button" class="btn-sm danger" id="btnResetDemo">重設預設範例資料</button>
+        </div>
+      </div>
+
+      <div id="backendList"></div>
+    </section>
+
+  </main>
 
   <nav class="bottom-nav">
-    <button type="button" class="nav-btn active" data-tab="tab-fill">一頁快填</button>
-    <button type="button" class="nav-btn" data-tab="tab-lookup">後台調閱</button>
-    <button type="button" class="nav-btn" data-tab="tab-overview">後台總覽</button>
+    <button type="button" class="nav-btn active" data-target="view-survey">
+      <span>📝</span>
+      <span>一頁快填</span>
+    </button>
+    <button type="button" class="nav-btn" data-target="view-lookup">
+      <span>🔍</span>
+      <span>後天調閱</span>
+    </button>
+    <button type="button" class="nav-btn" data-target="view-backend">
+      <span>📊</span>
+      <span>後台總覽</span>
+    </button>
   </nav>
 
+  <div class="photo-modal" id="photoModal">
+    <div class="photo-modal-top">
+      <span id="photoModalTitle">檢查表快速導覽</span>
+      <button type="button" class="photo-modal-btn" id="btnClosePhotoModal">✕ 關閉</button>
+    </div>
+    <div class="photo-modal-img-wrap">
+      <img id="photoModalImg" src="" alt="檢查表放大檢視" />
+    </div>
+    <div class="photo-modal-controls">
+      <button type="button" class="photo-modal-btn" id="btnPhotoZoomOut">－ 縮小</button>
+      <button type="button" class="photo-modal-btn" id="btnPhotoZoomReset">100% 還原</button>
+      <button type="button" class="photo-modal-btn" id="btnPhotoZoomIn">＋ 放大</button>
+    </div>
+  </div>
+
   <script>
-    const STORAGE_RECORDS_KEY = "raphael_eq_records_v1";
-    const STORAGE_URL_KEY = "raphael_eq_sync_url_v1";
+    (function () {
+      const STORAGE_KEY = "clinic_eq_anomaly_team_v1_1";
 
-    let records = JSON.parse(localStorage.getItem(STORAGE_RECORDS_KEY) || "[]");
-    let syncUrl = localStorage.getItem(STORAGE_URL_KEY) || "";
-    let selectedPhotoName = "";
-    let selectedVideoName = "";
-
-    const recordDateEl = document.getElementById("recordDate");
-    recordDateEl.value = new Date().toISOString().slice(0, 10);
-
-    const syncUrlInput = document.getElementById("syncUrlInput");
-    syncUrlInput.value = syncUrl;
-
-    // 分頁切換
-    document.querySelectorAll(".nav-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        const target = btn.dataset.tab;
-        ["tab-fill", "tab-lookup", "tab-overview"].forEach(id => {
-          document.getElementById(id).classList.toggle("hidden", id !== target);
-        });
-        if (target === "tab-lookup") renderLookup();
-        if (target === "tab-overview") renderStats();
-      });
-    });
-
-    // 照片與影片預覽
-    document.getElementById("photoInput").addEventListener("change", e => {
-      const file = e.target.files[0];
-      const img = document.getElementById("photoPreview");
-      const disp = document.getElementById("photoNameDisplay");
-      if (file) {
-        selectedPhotoName = file.name;
-        disp.textContent = file.name;
-        img.src = URL.createObjectURL(file);
-        img.classList.remove("hidden");
-      } else {
-        selectedPhotoName = "";
-        disp.textContent = "尚未選擇";
-        img.classList.add("hidden");
-      }
-    });
-
-    document.getElementById("videoInput").addEventListener("change", e => {
-      const file = e.target.files[0];
-      const vid = document.getElementById("videoPreview");
-      const disp = document.getElementById("videoNameDisplay");
-      if (file) {
-        selectedVideoName = file.name;
-        disp.textContent = file.name;
-        vid.src = URL.createObjectURL(file);
-        vid.classList.remove("hidden");
-      } else {
-        selectedVideoName = "";
-        disp.textContent = "尚未選擇";
-        vid.classList.add("hidden");
-      }
-    });
-
-    function saveLocalRecords() {
-      localStorage.setItem(STORAGE_RECORDS_KEY, JSON.stringify(records));
-      renderStats();
-      renderLookup();
-    }
-
-    function renderStats() {
-      const now = new Date();
-      const todayStr = now.toISOString().slice(0, 10);
-      const monthStr = todayStr.slice(0, 7);
-
-      const todayCount = records.filter(r => (r.recordDate || "").startsWith(todayStr)).length;
-      const monthCount = records.filter(r => (r.recordDate || "").startsWith(monthStr)).length;
-      const totalCount = records.length;
-
-      document.getElementById("todayCount").textContent = todayCount;
-      document.getElementById("monthCount").textContent = monthCount;
-      document.getElementById("totalCount").textContent = totalCount;
-
-      const statusEl = document.getElementById("syncStatus");
-      if (syncUrl) {
-        statusEl.textContent = "已設定共用同步網址：" + syncUrl;
-        statusEl.className = "status-msg ok";
-      } else {
-        statusEl.textContent = "尚未設定共用同步網址（目前僅存於本機，貼上 /exec 網址並儲存即可多人同步）。";
-        statusEl.className = "status-msg err";
-      }
-    }
-
-    function renderLookup() {
-      const kw = (document.getElementById("searchKeyword").value || "").trim().toLowerCase();
-      const stg = document.getElementById("filterStage").value;
-      const tbody = document.getElementById("lookupTableBody");
-
-      const filtered = records.filter(r => {
-        const matchStage = !stg || r.stage === stg;
-        const blob = `${r.patientName || ""} ${r.chartNo || ""} ${r.abnormalGroup || ""} ${r.notes || ""}`.toLowerCase();
-        const matchKw = !kw || blob.includes(kw);
-        return matchStage && matchKw;
-      });
-
-      if (!filtered.length) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#6b7280;">目前尚無符合的紀錄</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = filtered.slice().reverse().map(r => `
-        <tr>
-          <td>${escapeHtml(r.recordDate || "")}</td>
-          <td>${escapeHtml(r.patientName || "")}</td>
-          <td>${escapeHtml(r.chartNo || "")}</td>
-          <td>${escapeHtml(r.stage || "")}</td>
-          <td>${escapeHtml(r.abnormalGroup || "")}</td>
-          <td>${escapeHtml(r.actionStatus || "")}</td>
-          <td>${escapeHtml([r.photoName, r.videoName].filter(Boolean).join(" / ") || "-")}</td>
-          <td>${escapeHtml(r.notes || "")}</td>
-        </tr>
-      `).join("");
-    }
-
-    function escapeHtml(str) {
-      return String(str).replace(/[&<>"']/g, m => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-      }[m]));
-    }
-
-    // 儲存共用網址
-    document.getElementById("saveSyncUrlBtn").addEventListener("click", () => {
-      const val = syncUrlInput.value.trim();
-      syncUrl = val;
-      localStorage.setItem(STORAGE_URL_KEY, syncUrl);
-      renderStats();
-    });
-
-    // 拉取雲端資料
-    async function pullCloudData() {
-      const statusEl = document.getElementById("syncStatus");
-      if (!syncUrl) {
-        statusEl.textContent = "請先輸入並儲存 Google Apps Script /exec 網址。";
-        statusEl.className = "status-msg err";
-        return;
-      }
-      statusEl.textContent = "正在拉取雲端最新資料...";
-      statusEl.className = "status-msg";
-      try {
-        const res = await fetch(syncUrl);
-        const data = await res.json();
-        if (data && Array.isArray(data.records)) {
-          records = data.records;
-          saveLocalRecords();
-          statusEl.textContent = `已同步雲端資料，共 ${records.length} 筆紀錄。`;
-          statusEl.className = "status-msg ok";
-        } else {
-          statusEl.textContent = "雲端回傳格式異常，請確認 Apps Script 部署狀態。";
-          statusEl.className = "status-msg err";
+      const DEFAULT_RECORDS = [
+        {
+          id: "REC-20261120-01",
+          recordDate: "2026-11-20",
+          patientName: "王○明",
+          chartNo: "M101042",
+          stage: "交機前點檢",
+          signedOff: "是",
+          prevDate: "2026-11-19",
+          abnormalGroup: "D組",
+          triggerType: "線材繞動／彎折異常",
+          actionStatus: "當天檔回／退回重做",
+          videoName: "20261120_EQ104_20s繞線.mp4",
+          photoName: "20261120_EQ104_檢查表.jpg",
+          photoDataUrl: "",
+          notes: "生產部已簽名，門市繞線即異常並當天檔回"
+        },
+        {
+          id: "REC-20261123-01",
+          recordDate: "2026-11-25",
+          patientName: "陳○華",
+          chartNo: "M100881",
+          stage: "患者回報異常",
+          signedOff: "是",
+          prevDate: "2026-11-19",
+          abnormalGroup: "C組、D組",
+          triggerType: "穿戴活動間歇性中斷",
+          actionStatus: "後續回報／7日內異常",
+          videoName: "20261123_EQ088_20s異常.mp4",
+          photoName: "20261123_EQ088_檢查表.jpg",
+          photoDataUrl: "",
+          notes: "距11/19檢修4天，跨組連帶異常"
         }
-      } catch (err) {
-        statusEl.textContent = "拉取失敗，請確認網址權限（誰可以存取：所有人）與網路連線。";
-        statusEl.className = "status-msg err";
-      }
-    }
+      ];
 
-    document.getElementById("pullCloudBtn").addEventListener("click", pullCloudData);
-    document.getElementById("refreshLookupBtn").addEventListener("click", pullCloudData);
-    document.getElementById("searchKeyword").addEventListener("input", renderLookup);
-    document.getElementById("filterStage").addEventListener("change", renderLookup);
+      let records = [];
+      let currentVideo = { name: "", previewUrl: "", dataUrl: "" };
+      let currentPhoto = { name: "", previewUrl: "", dataUrl: "" };
+      let onlyHighRiskFilter = false;
 
-    // 表單送出
-    document.getElementById("quickForm").addEventListener("submit", async e => {
-      e.preventDefault();
-      const statusEl = document.getElementById("formStatus");
-      const record = {
-        id: "REC-" + Date.now(),
-        recordDate: document.getElementById("recordDate").value,
-        patientName: document.getElementById("patientName").value.trim(),
-        chartNo: document.getElementById("chartNo").value.trim(),
-        stage: document.getElementById("stage").value,
-        signedOff: document.getElementById("signedOff").value,
-        prevDate: document.getElementById("prevDate").value,
-        abnormalGroup: document.getElementById("abnormalGroup").value,
-        triggerType: document.getElementById("triggerType").value,
-        actionStatus: document.getElementById("actionStatus").value,
-        videoName: selectedVideoName,
-        photoName: selectedPhotoName,
-        notes: document.getElementById("notes").value.trim(),
-        updatedAt: new Date().toISOString()
-      };
-
-      records.push(record);
-      saveLocalRecords();
-
-      if (!syncUrl) {
-        statusEl.textContent = "已存於本機；尚未設定共用同步網址，請至「後台總覽」設定後再同步。";
-        statusEl.className = "status-msg err";
-        return;
+      function nowTimeStr() {
+        const d = new Date();
+        return d.toTimeString().slice(0, 8);
       }
 
-      statusEl.textContent = "正在同步到 Google 試算表...";
-      statusEl.className = "status-msg";
+      function showToast(msg) {
+        const el = document.getElementById("toast");
+        el.textContent = msg;
+        el.classList.add("show");
+        clearTimeout(window.__toastTimer);
+        window.__toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
+      }
 
-      try {
-        await fetch(syncUrl, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify({ record })
+      function loadRecords() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) {
+            records = DEFAULT_RECORDS.slice();
+            saveRecords(false);
+          } else {
+            const parsed = JSON.parse(raw);
+            records = Array.isArray(parsed) ? parsed : DEFAULT_RECORDS.slice();
+          }
+        } catch (err) {
+          records = DEFAULT_RECORDS.slice();
+        }
+      }
+
+      function saveRecords(updateSyncClock) {
+        const storable = records.map(r => ({
+          id: r.id,
+          recordDate: r.recordDate,
+          patientName: r.patientName,
+          chartNo: r.chartNo,
+          stage: r.stage || "",
+          signedOff: r.signedOff || "是",
+          prevDate: r.prevDate || "",
+          abnormalGroup: r.abnormalGroup || "",
+          triggerType: r.triggerType || "",
+          actionStatus: r.actionStatus || "",
+          videoName: r.videoName || "",
+          photoName: r.photoName || "",
+          photoDataUrl: (r.photoDataUrl && r.photoDataUrl.startsWith("data:")) ? r.photoDataUrl : "",
+          notes: r.notes || ""
+        }));
+
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(storable));
+        } catch (err) {
+          const slim = storable.map(r => ({ ...r, photoDataUrl: "" }));
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(slim)); } catch (e2) {}
+        }
+
+        if (updateSyncClock) {
+          document.getElementById("lastSyncTime").textContent = "同步於 " + nowTimeStr();
+          document.getElementById("syncStatusText").textContent = "狀態：已同步至本機後台";
+        }
+      }
+
+      function calcDaysDiff(recDateStr, prevDateStr) {
+        if (!recDateStr || !prevDateStr) return null;
+        const d1 = new Date(recDateStr + "T00:00:00");
+        const d2 = new Date(prevDateStr + "T00:00:00");
+        if (Number.isNaN(d1.getTime()) || Number.isNaN(d2.getTime())) return null;
+        return Math.round((d1 - d2) / 86400000);
+      }
+
+      function getRiskBadge(days) {
+        if (days === null || days === undefined || Number.isNaN(days)) {
+          return { label: "未填前次日期", cls: "tag-warn", isHigh: false };
+        }
+        if (days >= 0 && days <= 7) {
+          return { label: `高風險（${days}天內）`, cls: "tag-high", isHigh: true };
+        }
+        return { label: `一般（${days}天）`, cls: "tag-ok", isHigh: false };
+      }
+
+      function updateRiskPreview() {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const prevStr = document.getElementById("prevDate").value;
+        const box = document.getElementById("riskPreview");
+        if (!prevStr) {
+          box.style.display = "none";
+          return;
+        }
+        const diff = calcDaysDiff(todayStr, prevStr);
+        box.style.display = "flex";
+        if (diff !== null && diff >= 0 && diff <= 7) {
+          box.className = "risk-banner risk-high";
+          box.innerHTML = `<span>⚠️ 距前次檢修／交機 <b>${diff} 天</b>（≤7天高風險件）</span><span>自動標記</span>`;
+        } else if (diff !== null) {
+          box.className = "risk-banner risk-ok";
+          box.innerHTML = `<span>距前次檢修／交機 <b>${diff} 天</b></span><span>一般區間</span>`;
+        } else {
+          box.style.display = "none";
+        }
+      }
+
+      function escapeHtml(str) {
+        return String(str || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function buildRecordCardHtml(r, allowDelete) {
+        const days = calcDaysDiff(r.recordDate, r.prevDate);
+        const badge = getRiskBadge(days);
+        const mediaBits = [];
+        if (r.videoName) mediaBits.push(`🎥 錄影：${r.videoName}`);
+        if (r.photoName) mediaBits.push(`📋 檢查表：${r.photoName}`);
+        const mediaText = mediaBits.length ? mediaBits.join("　|　") : "尚未附加影片/檢查表檔名";
+
+        let mediaPreviewHtml = "";
+        const cardPhotoSrc = r.photoDataUrl || r.photoPreviewUrl || "";
+        if (cardPhotoSrc) {
+          mediaPreviewHtml += `<img src="${cardPhotoSrc}" data-view-photo="${escapeHtml(cardPhotoSrc)}" data-view-title="${escapeHtml((r.patientName || "") + " - " + (r.photoName || "檢查表"))}" style="max-height:130px;border-radius:8px;margin-top:8px;display:block;cursor:zoom-in;" alt="檢查表" />`;
+        }
+        if (r.previewUrl) {
+          mediaPreviewHtml += `<video src="${r.previewUrl}" controls playsinline style="max-height:150px;border-radius:8px;margin-top:8px;display:block;background:#000;"></video>`;
+        }
+
+        return `
+          <div class="rec-card">
+            <div class="rec-top">
+              <div>
+                <div class="rec-title">${escapeHtml(r.patientName)} <span style="font-weight:500;color:#64748b;font-size:13px;">（病歷號：${escapeHtml(r.chartNo || "-")}）</span></div>
+                <div class="rec-meta">
+                  登記日：<b>${escapeHtml(r.recordDate)}</b>
+                  ${r.abnormalGroup ? ` · 組別：<b>${escapeHtml(r.abnormalGroup)}</b>` : ""}
+                </div>
+              </div>
+              <span class="tag ${badge.cls}">${escapeHtml(badge.label)}</span>
+            </div>
+            <div class="rec-meta">
+              階段：${escapeHtml(r.stage || "-")} · 簽核：${escapeHtml(r.signedOff || "-")} · 觸發：${escapeHtml(r.triggerType || "-")} · 處置：${escapeHtml(r.actionStatus || "-")}
+            </div>
+            <div class="rec-meta" style="margin-top:4px;color:#0f766e;font-weight:600;">${escapeHtml(mediaText)}</div>
+            ${r.notes ? `<div class="rec-meta" style="margin-top:4px;">備註：${escapeHtml(r.notes)}</div>` : ""}
+            ${mediaPreviewHtml}
+            ${allowDelete ? `
+              <div class="btn-row">
+                <button type="button" class="btn-sm danger" data-del-id="${escapeHtml(r.id)}">刪除紀錄</button>
+              </div>` : ""}
+          </div>
+        `;
+      }
+
+      function renderLookup() {
+        const kw = document.getElementById("searchKeyword").value.trim().toLowerCase();
+        const cno = document.getElementById("searchChartNo").value.trim().toLowerCase();
+
+        const filtered = records.filter(r => {
+          const hay = `${r.patientName} ${r.chartNo} ${r.abnormalGroup} ${r.stage} ${r.triggerType} ${r.notes} ${r.videoName} ${r.photoName}`.toLowerCase();
+          const matchKw = !kw || hay.includes(kw);
+          const matchCno = !cno || String(r.chartNo || "").toLowerCase().includes(cno);
+          const days = calcDaysDiff(r.recordDate, r.prevDate);
+          const isHigh = days !== null && days >= 0 && days <= 7;
+          const matchRisk = !onlyHighRiskFilter || isHigh;
+          return matchKw && matchCno && matchRisk;
         });
-        statusEl.textContent = "已儲存並送出雲端同步！可到「後台總覽」按「拉取雲端最新資料」確認。";
-        statusEl.className = "status-msg ok";
-      } catch (err) {
-        statusEl.textContent = "已存於本機，但雲端送出失敗，請檢查共用同步網址。";
-        statusEl.className = "status-msg err";
+
+        const container = document.getElementById("lookupResults");
+        if (!filtered.length) {
+          container.innerHTML = `<div class="card"><div class="card-hint" style="margin:0;">查無符合條件的紀錄，請調整姓名、病歷號或關鍵字。</div></div>`;
+          return;
+        }
+        container.innerHTML = `<div class="card-hint" style="margin:4px 2px 10px;">共查到 <b>${filtered.length}</b> 筆檔回／異常紀錄</div>` +
+          filtered.map(r => buildRecordCardHtml(r, false)).join("");
       }
-    });
 
-    document.getElementById("resetBtn").addEventListener("click", () => {
-      document.getElementById("quickForm").reset();
-      recordDateEl.value = new Date().toISOString().slice(0, 10);
-      selectedPhotoName = "";
-      selectedVideoName = "";
-      document.getElementById("photoNameDisplay").textContent = "尚未選擇";
-      document.getElementById("videoNameDisplay").textContent = "尚未選擇";
-      document.getElementById("photoPreview").classList.add("hidden");
-      document.getElementById("videoPreview").classList.add("hidden");
-      document.getElementById("formStatus").textContent = "";
-    });
+      function getLocalTodayStr() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const d = String(now.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      }
 
-    renderStats();
-    renderLookup();
+      function getLocalMonthStr() {
+        return getLocalTodayStr().slice(0, 7);
+      }
+
+      function renderBackend() {
+        const todayStr = getLocalTodayStr();
+        const monthStr = getLocalMonthStr();
+        const total = records.length;
+        const todayCount = records.filter(r => r.recordDate === todayStr).length;
+        const monthCount = records.filter(r => String(r.recordDate || "").startsWith(monthStr)).length;
+        const signedCount = records.filter(r => r.signedOff === "是").length;
+        const high7dCount = records.filter(r => {
+          const d = calcDaysDiff(r.recordDate, r.prevDate);
+          return d !== null && d >= 0 && d <= 7;
+        }).length;
+
+        document.getElementById("totalCountBadge").textContent = `日 ${todayCount}／月 ${monthCount}／累 ${total}`;
+        document.getElementById("kpiTodayTotal").textContent = todayCount;
+        document.getElementById("kpiTodayDate").textContent = `今日 ${todayStr}`;
+        document.getElementById("kpiMonthTotal").textContent = monthCount;
+        document.getElementById("kpiMonthLabel").textContent = `當月 ${monthStr}`;
+        document.getElementById("kpiTotal").textContent = total;
+        document.getElementById("kpiMonthShare").textContent = `當月佔比 ${total ? ((monthCount / total) * 100).toFixed(1) : "0.0"}%`;
+        document.getElementById("kpi7d").textContent = high7dCount;
+        document.getElementById("kpiSignedRate").textContent = `簽核後仍檔回 ${signedCount} 筆`;
+
+        const listEl = document.getElementById("backendList");
+        if (!records.length) {
+          listEl.innerHTML = `<div class="card"><div class="card-hint" style="margin:0;">目前尚無後台紀錄。</div></div>`;
+          return;
+        }
+        listEl.innerHTML = records.map(r => buildRecordCardHtml(r, true)).join("");
+
+        listEl.querySelectorAll("[data-del-id]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-del-id");
+            records = records.filter(item => item.id !== id);
+            saveRecords(true);
+            renderAll();
+            showToast("已刪除並同步後台");
+          });
+        });
+      }
+
+      function renderAll() {
+        renderLookup();
+        renderBackend();
+      }
+
+      function runSyncWorkflow(sourceLabel) {
+        loadRecords();
+        saveRecords(true);
+        renderAll();
+        showToast(`${sourceLabel}完成（共 ${records.length} 筆）`);
+      }
+
+      document.getElementById("photoPreview").addEventListener("click", e => {
+        e.stopPropagation();
+        const srcUrl = currentPhoto.dataUrl || currentPhoto.previewUrl;
+        if (srcUrl) openPhotoModal(srcUrl, currentPhoto.name || "檢查表快速導覽");
+      });
+      document.getElementById("btnZoomPhoto").addEventListener("click", e => {
+        e.stopPropagation();
+        const srcUrl = currentPhoto.dataUrl || currentPhoto.previewUrl;
+        if (srcUrl) openPhotoModal(srcUrl, currentPhoto.name || "檢查表快速導覽");
+      });
+      document.getElementById("btnClosePhotoModal").addEventListener("click", closePhotoModal);
+      document.getElementById("btnPhotoZoomOut").addEventListener("click", () => setPhotoZoom(-0.25));
+      document.getElementById("btnPhotoZoomReset").addEventListener("click", () => setPhotoZoom("reset"));
+      document.getElementById("btnPhotoZoomIn").addEventListener("click", () => setPhotoZoom(0.25));
+
+      document.addEventListener("click", e => {
+        const target = e.target;
+        if (target && target.hasAttribute("data-view-photo")) {
+          openPhotoModal(target.getAttribute("data-view-photo"), target.getAttribute("data-view-title"));
+        }
+      });
+
+      // Bottom tab navigation
+      document.querySelectorAll(".nav-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const targetId = btn.getAttribute("data-target");
+          document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+          document.getElementById(targetId).classList.add("active");
+          renderAll();
+        });
+      });
+
+      // Sync buttons
+      document.getElementById("btnTopSync").addEventListener("click", () => runSyncWorkflow("同步作業"));
+      document.getElementById("btnLookupSync").addEventListener("click", () => runSyncWorkflow("同步查詢"));
+      document.getElementById("btnBackendSync").addEventListener("click", () => runSyncWorkflow("後台同步"));
+
+      // Video selection logic
+      function handleVideoFile(file) {
+        if (!file) return;
+        const mb = (file.size / 1024 / 1024).toFixed(1);
+        const objUrl = URL.createObjectURL(file);
+        currentVideo = { name: file.name, previewUrl: objUrl, dataUrl: "" };
+        document.getElementById("videoMeta").textContent = `已選影片（約20秒級）：${file.name}（${mb} MB）`;
+        document.getElementById("videoBox").classList.add("has-file");
+        const vidEl = document.getElementById("videoPreview");
+        vidEl.src = objUrl;
+        vidEl.classList.add("show");
+        showToast(`已附加影片：${file.name}`);
+      }
+
+      document.getElementById("btnPickVideo").addEventListener("click", e => {
+        e.stopPropagation();
+        const inp = document.getElementById("videoInput");
+        try { inp.click(); } catch (err) { showToast("請直接點選下方「選擇檔案」"); }
+      });
+
+      document.getElementById("videoInput").addEventListener("change", e => {
+        handleVideoFile(e.target.files && e.target.files[0]);
+      });
+
+      // Photo / checklist selection logic
+      let photoZoomScale = 1;
+
+      function openPhotoModal(imgSrc, titleText) {
+        if (!imgSrc) return;
+        photoZoomScale = 1;
+        const mImg = document.getElementById("photoModalImg");
+        mImg.src = imgSrc;
+        mImg.style.transform = "scale(1)";
+        document.getElementById("photoModalTitle").textContent = titleText || "檢查表快速導覽";
+        document.getElementById("photoModal").classList.add("open");
+      }
+
+      function closePhotoModal() {
+        document.getElementById("photoModal").classList.remove("open");
+      }
+
+      function setPhotoZoom(deltaOrReset) {
+        const mImg = document.getElementById("photoModalImg");
+        if (deltaOrReset === "reset") {
+          photoZoomScale = 1;
+        } else {
+          photoZoomScale = Math.max(0.6, Math.min(3, +(photoZoomScale + deltaOrReset).toFixed(2)));
+        }
+        mImg.style.transform = `scale(${photoZoomScale})`;
+      }
+
+      function handlePhotoFile(file) {
+        if (!file) return;
+        const objUrl = URL.createObjectURL(file);
+        currentPhoto = { name: file.name, previewUrl: objUrl, dataUrl: "" };
+        document.getElementById("photoMeta").textContent = `已選檢查表：${file.name}`;
+        document.getElementById("photoBox").classList.add("has-file");
+        const imgEl = document.getElementById("photoPreview");
+        imgEl.src = objUrl;
+        imgEl.style.cursor = "zoom-in";
+        imgEl.classList.add("show");
+        document.getElementById("photoNavBar").classList.add("show");
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === "string" && reader.result.length < 2500000) {
+            currentPhoto.dataUrl = reader.result;
+          }
+        };
+        reader.readAsDataURL(file);
+        showToast(`已附加檢查表：${file.name}`);
+      }
+
+      document.getElementById("btnPickPhoto").addEventListener("click", e => {
+        e.stopPropagation();
+        const inp = document.getElementById("photoInput");
+        try { inp.click(); } catch (err) { showToast("請直接點選下方「選擇檔案」"); }
+      });
+
+      document.getElementById("photoInput").addEventListener("change", e => {
+        handlePhotoFile(e.target.files && e.target.files[0]);
+      });
+
+      document.getElementById("prevDate").addEventListener("change", updateRiskPreview);
+
+      // Submit survey form
+      document.getElementById("surveyForm").addEventListener("submit", e => {
+        e.preventDefault();
+        const patientName = document.getElementById("patientName").value.trim();
+        const chartNo = document.getElementById("chartNo").value.trim();
+        if (!patientName || !chartNo) {
+          showToast("請填寫患者姓名與病歷號");
+          return;
+        }
+
+        const now = new Date();
+        const recordDate = now.toISOString().slice(0, 10);
+        const newRec = {
+          id: "REC-" + now.getTime().toString().slice(-8),
+          recordDate,
+          patientName,
+          chartNo,
+          stage: document.getElementById("stageMain").value,
+          signedOff: document.getElementById("signedOff").value,
+          prevDate: document.getElementById("prevDate").value,
+          abnormalGroup: document.getElementById("abnormalGroup").value.trim(),
+          triggerType: document.getElementById("triggerType").value,
+          actionStatus: document.getElementById("actionStatus").value,
+          videoName: currentVideo.name,
+          photoName: currentPhoto.name,
+          previewUrl: currentVideo.previewUrl,
+          photoPreviewUrl: currentPhoto.previewUrl,
+          photoDataUrl: currentPhoto.dataUrl,
+          notes: document.getElementById("notes").value.trim()
+        };
+
+        records.unshift(newRec);
+        saveRecords(true);
+        renderAll();
+
+        document.getElementById("surveyForm").reset();
+        currentVideo = { name: "", previewUrl: "", dataUrl: "" };
+        currentPhoto = { name: "", previewUrl: "", dataUrl: "" };
+        document.getElementById("videoMeta").textContent = "尚未附加錄影檔";
+        document.getElementById("photoMeta").textContent = "尚未附加檢查表照片";
+        document.getElementById("videoBox").classList.remove("has-file");
+        document.getElementById("photoBox").classList.remove("has-file");
+        document.getElementById("videoPreview").classList.remove("show");
+        document.getElementById("videoPreview").removeAttribute("src");
+        document.getElementById("photoPreview").classList.remove("show");
+        document.getElementById("photoPreview").removeAttribute("src");
+        document.getElementById("photoNavBar").classList.remove("show");
+        document.getElementById("riskPreview").style.display = "none";
+
+        showToast(`已儲存並同步「${patientName}」紀錄`);
+      });
+
+      // Search & filters
+      document.getElementById("searchKeyword").addEventListener("input", renderLookup);
+      document.getElementById("searchChartNo").addEventListener("input", renderLookup);
+      document.getElementById("btnClearFilter").addEventListener("click", () => {
+        document.getElementById("searchKeyword").value = "";
+        document.getElementById("searchChartNo").value = "";
+        onlyHighRiskFilter = false;
+        document.getElementById("btnOnlyHighRisk").classList.remove("primary");
+        renderLookup();
+        showToast("已清除篩選");
+      });
+      document.getElementById("btnOnlyHighRisk").addEventListener("click", e => {
+        onlyHighRiskFilter = !onlyHighRiskFilter;
+        e.currentTarget.classList.toggle("primary", onlyHighRiskFilter);
+        renderLookup();
+      });
+
+      // Export CSV / JSON / Reset
+      document.getElementById("btnExportCsv").addEventListener("click", () => {
+        const headers = [
+          "紀錄日期", "患者姓名", "病歷號", "檢測回報階段",
+          "是否已簽核放行", "前次檢修交機日", "距前次天數", "7日內二次警示",
+          "異常組別", "觸發方式", "檔回處理狀態", "錄影檔名", "檢查表照片檔名", "備註"
+        ];
+        const rows = records.map(r => {
+          const d = calcDaysDiff(r.recordDate, r.prevDate);
+          const badge = getRiskBadge(d).label;
+          return [
+            r.recordDate, r.patientName, r.chartNo, r.stage,
+            r.signedOff, r.prevDate, d === null ? "" : d, badge,
+            r.abnormalGroup, r.triggerType, r.actionStatus, r.videoName, r.photoName, r.notes
+          ].map(v => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`).join(",");
+        });
+        const bom = "﻿";
+        const blob = new Blob([bom + headers.join(",") + "
+" + rows.join("
+")], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `多人共用版_v1.1_設備檔回與異常紀錄_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("已匯出 CSV 檔");
+      });
+
+      document.getElementById("btnExportJson").addEventListener("click", () => {
+        const blob = new Blob([JSON.stringify(records, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `多人共用版_v1.1_設備檔回紀錄備份_${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("已匯出 JSON 備份");
+      });
+
+      document.getElementById("btnResetDemo").addEventListener("click", () => {
+        records = DEFAULT_RECORDS.slice();
+        saveRecords(true);
+        renderAll();
+        showToast("已重設為預設範例資料並同步");
+      });
+
+      const ENDPOINT_KEY = "clinic_eq_shared_endpoint_v1_1";
+
+      function getEndpoint() {
+        try { return (localStorage.getItem(ENDPOINT_KEY) || "").trim(); } catch (e) { return ""; }
+      }
+
+      function setEndpoint(val) {
+        try {
+          if (val) localStorage.setItem(ENDPOINT_KEY, val.trim());
+          else localStorage.removeItem(ENDPOINT_KEY);
+        } catch (e) {}
+        refreshCloudBadge();
+      }
+
+      function refreshCloudBadge() {
+        const url = getEndpoint();
+        const badge = document.getElementById("cloudModeBadge");
+        const status = document.getElementById("syncStatusText");
+        if (!badge || !status) return;
+        if (url) {
+          badge.textContent = "共用雲端已連結";
+          badge.className = "tag tag-ok";
+          status.textContent = "狀態：多人共用雲端模式 · 即時累積";
+        } else {
+          badge.textContent = "本機模式";
+          badge.className = "tag tag-info";
+          status.textContent = "狀態：本機即時儲存（可填共用網址或合併 JSON）";
+        }
+      }
+
+      function mergeRecordsList(incomingList) {
+        if (!Array.isArray(incomingList)) return 0;
+        const map = new Map();
+        records.forEach(r => { if (r && r.id) map.set(r.id, r); });
+        let added = 0;
+        incomingList.forEach(item => {
+          if (!item || !item.id) return;
+          if (!map.has(item.id)) {
+            map.set(item.id, item);
+            added++;
+          } else {
+            map.set(item.id, { ...map.get(item.id), ...item });
+          }
+        });
+        records = Array.from(map.values()).sort((a, b) => String(b.id).localeCompare(String(a.id)));
+        return added;
+      }
+
+      async function pushRecordToCloud(rec) {
+        const url = getEndpoint();
+        if (!url) return;
+        try {
+          await fetch(url, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "upsert", record: rec, syncedAt: new Date().toISOString() })
+          });
+        } catch (e) {}
+      }
+
+      async function pullRecordsFromCloud() {
+        const url = getEndpoint();
+        if (!url) {
+          showToast("請先填入共用同步網址");
+          return;
+        }
+        try {
+          showToast("正在拉取雲端資料...");
+          const resp = await fetch(url, { method: "GET" });
+          if (!resp.ok) throw new Error("HTTP " + resp.status);
+          const data = await resp.json();
+          const list = Array.isArray(data) ? data : (Array.isArray(data.records) ? data.records : []);
+          const added = mergeRecordsList(list);
+          saveRecords(true);
+          renderAll();
+          showToast(`雲端同步完成（新增/更新 ${added} 筆，累積 ${records.length} 筆）`);
+        } catch (err) {
+          showToast("雲端拉取失敗，請確認網址權限或 CORS");
+        }
+      }
+
+      // Hook cloud push on new record submission
+      document.getElementById("surveyForm").addEventListener("submit", () => {
+        setTimeout(() => {
+          if (records.length > 0 && getEndpoint()) {
+            pushRecordToCloud(records[0]);
+          }
+        }, 50);
+      });
+
+      document.getElementById("btnSaveEndpoint").addEventListener("click", () => {
+        const val = document.getElementById("sharedEndpointUrl").value.trim();
+        setEndpoint(val);
+        showToast(val ? "已儲存共用同步網址" : "已清除共用網址");
+      });
+
+      document.getElementById("btnClearEndpoint").addEventListener("click", () => {
+        document.getElementById("sharedEndpointUrl").value = "";
+        setEndpoint("");
+        showToast("已切回本機模式");
+      });
+
+      document.getElementById("btnPullCloud").addEventListener("click", pullRecordsFromCloud);
+
+      document.getElementById("btnImportJson").addEventListener("click", () => {
+        document.getElementById("importJsonInput").click();
+      });
+
+      document.getElementById("importJsonInput").addEventListener("change", e => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(String(reader.result || "[]"));
+            const list = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.records) ? parsed.records : []);
+            const added = mergeRecordsList(list);
+            saveRecords(true);
+            renderAll();
+            showToast(`已合併 ${added} 筆紀錄（累積 ${records.length} 筆）`);
+          } catch (err) {
+            showToast("JSON 格式無法解析");
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = "";
+      });
+
+      loadRecords();
+      document.getElementById("sharedEndpointUrl").value = getEndpoint();
+      refreshCloudBadge();
+      document.getElementById("lastSyncTime").textContent = "就緒 " + nowTimeStr();
+      renderAll();
+    })();
   </script>
 </body>
 </html>
