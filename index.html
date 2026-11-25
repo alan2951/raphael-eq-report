@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>設備異常快填與後台調閱系統（多人共用版 v1.1）</title>
+  <title>設備異常快填與後台調閱系統（多人共用版 v1.2）</title>
   <style>
     :root {
       --bg: #f3f5f7;
@@ -508,8 +508,8 @@
 
   <header class="topbar">
     <div>
-      <div class="topbar-title">設備異常快填與同步調閱 <span style="font-size:11px;font-weight:600;background:rgba(255,255,255,0.16);padding:2px 7px;border-radius:999px;vertical-align:middle;">多人共用版 v1.1</span></div>
-      <div class="topbar-sub">專記當天檔回異常 · 業務快填・照片快速導覽・後台分「當天／當月／累積」統計</div>
+      <div class="topbar-title">設備異常快填與同步調閱 <span style="font-size:11px;font-weight:600;background:rgba(255,255,255,0.16);padding:2px 7px;border-radius:999px;vertical-align:middle;">多人共用版 v1.2</span></div>
+      <div class="topbar-sub">專記當天檔回異常 · 業務快填・雙向刪除同步・後台分「當天／當月／累積」統計</div>
     </div>
     <div class="topbar-actions">
       <button type="button" class="sync-btn" id="btnTopSync">🔄 同步作業</button>
@@ -700,7 +700,7 @@
           <span>多人共用雲端同步設定（選填）</span>
           <span class="tag tag-info" id="cloudModeBadge">本機模式</span>
         </div>
-        <p class="card-hint">填入團隊共用的 Webhook／Google Apps Script 網址後，大家填寫與按「同步作業」就會自動推播與拉取同一份累積資料；未填網址時則以本機儲存＋匯出／匯入合併運作。</p>
+        <p class="card-hint">填入團隊共用的 Webhook／Google Apps Script 網址後，大家填寫、刪除與按「同步作業」就會自動同步同一份雲端試算表；未填網址時則以本機儲存＋匯出／匯入合併運作。</p>
         <div class="field">
           <label class="lbl" for="sharedEndpointUrl">共用同步網址（Webhook / GAS Web App URL）</label>
           <input type="text" id="sharedEndpointUrl" placeholder="例如：https://script.google.com/macros/s/xxxxx/exec" autocomplete="off" />
@@ -861,7 +861,9 @@
 
         if (updateSyncClock) {
           document.getElementById("lastSyncTime").textContent = "同步於 " + nowTimeStr();
-          document.getElementById("syncStatusText").textContent = "狀態：已同步至本機後台";
+          document.getElementById("syncStatusText").textContent = getEndpoint()
+            ? "狀態：已同步至本機與雲端試算表"
+            : "狀態：已同步至本機後台";
         }
       }
 
@@ -1024,8 +1026,9 @@
             const id = btn.getAttribute("data-del-id");
             records = records.filter(item => item.id !== id);
             saveRecords(true);
+            deleteRecordFromCloud(id);
             renderAll();
-            showToast("已刪除並同步後台");
+            showToast(getEndpoint() ? "已刪除並同步刪除雲端紀錄" : "已刪除並同步後台");
           });
         });
       }
@@ -1036,6 +1039,10 @@
       }
 
       function runSyncWorkflow(sourceLabel) {
+        if (getEndpoint()) {
+          pullRecordsFromCloud(sourceLabel);
+          return;
+        }
         loadRecords();
         saveRecords(true);
         renderAll();
@@ -1176,7 +1183,7 @@
         }
 
         const now = new Date();
-        const recordDate = now.toISOString().slice(0, 10);
+        const recordDate = getLocalTodayStr();
         const newRec = {
           id: "REC-" + now.getTime().toString().slice(-8),
           recordDate,
@@ -1198,6 +1205,9 @@
 
         records.unshift(newRec);
         saveRecords(true);
+        if (getEndpoint()) {
+          pushRecordToCloud(newRec);
+        }
         renderAll();
 
         document.getElementById("surveyForm").reset();
@@ -1250,13 +1260,15 @@
             r.abnormalGroup, r.triggerType, r.actionStatus, r.videoName, r.photoName, r.notes
           ].map(v => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`).join(",");
         });
-        const bom = "\uFEFF";
-        const csvStr = bom + headers.join(",") + "\n" + rows.join("\n");
+        const bom = "﻿";
+        const csvStr = bom + headers.join(",") + "
+" + rows.join("
+");
         const blob = new Blob([csvStr], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `多人共用版_v1.1_設備檔回與異常紀錄_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.download = `多人共用版_v1.2_設備檔回與異常紀錄_${getLocalTodayStr()}.csv`;
         a.click();
         URL.revokeObjectURL(url);
         showToast("已匯出 CSV 檔");
@@ -1267,7 +1279,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `多人共用版_v1.1_設備檔回紀錄備份_${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = `多人共用版_v1.2_設備檔回紀錄備份_${getLocalTodayStr()}.json`;
         a.click();
         URL.revokeObjectURL(url);
         showToast("已匯出 JSON 備份");
@@ -1302,7 +1314,7 @@
         if (url) {
           badge.textContent = "共用雲端已連結";
           badge.className = "tag tag-ok";
-          status.textContent = "狀態：多人共用雲端模式 · 即時累積";
+          status.textContent = "狀態：多人共用雲端模式 · 新增/刪除雙向同步";
         } else {
           badge.textContent = "本機模式";
           badge.className = "tag tag-info";
@@ -1341,34 +1353,46 @@
         } catch (e) {}
       }
 
-      async function pullRecordsFromCloud() {
+      async function deleteRecordFromCloud(id) {
+        const url = getEndpoint();
+        if (!url || !id) return;
+        try {
+          await fetch(url, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "delete", id: id, syncedAt: new Date().toISOString() })
+          });
+        } catch (e) {}
+      }
+
+      async function pullRecordsFromCloud(label) {
         const url = getEndpoint();
         if (!url) {
           showToast("請先填入共用同步網址");
           return;
         }
         try {
-          showToast("正在拉取雲端資料...");
+          showToast("正在拉取雲端最新資料...");
           const resp = await fetch(url, { method: "GET" });
           if (!resp.ok) throw new Error("HTTP " + resp.status);
           const data = await resp.json();
           const list = Array.isArray(data) ? data : (Array.isArray(data.records) ? data.records : []);
-          const added = mergeRecordsList(list);
+          const localPhotoMap = new Map();
+          records.forEach(r => {
+            if (r && r.id && r.photoDataUrl) localPhotoMap.set(r.id, r.photoDataUrl);
+          });
+          records = list.map(item => ({
+            ...item,
+            photoDataUrl: item.photoDataUrl || localPhotoMap.get(item.id) || ""
+          })).sort((a, b) => String(b.id).localeCompare(String(a.id)));
           saveRecords(true);
           renderAll();
-          showToast(`雲端同步完成（新增/更新 ${added} 筆，累積 ${records.length} 筆）`);
+          showToast(`${label || "雲端同步"}完成（目前共 ${records.length} 筆）`);
         } catch (err) {
-          showToast("雲端拉取失敗，請確認網址權限或 CORS");
+          showToast("雲端拉取失敗，請確認網址權限或部署狀態");
         }
       }
-
-      document.getElementById("surveyForm").addEventListener("submit", () => {
-        setTimeout(() => {
-          if (records.length > 0 && getEndpoint()) {
-            pushRecordToCloud(records[0]);
-          }
-        }, 50);
-      });
 
       document.getElementById("btnSaveEndpoint").addEventListener("click", () => {
         const val = document.getElementById("sharedEndpointUrl").value.trim();
@@ -1382,7 +1406,7 @@
         showToast("已切回本機模式");
       });
 
-      document.getElementById("btnPullCloud").addEventListener("click", pullRecordsFromCloud);
+      document.getElementById("btnPullCloud").addEventListener("click", () => pullRecordsFromCloud("拉取雲端資料"));
 
       document.getElementById("btnImportJson").addEventListener("click", () => {
         document.getElementById("importJsonInput").click();
