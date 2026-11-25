@@ -227,18 +227,6 @@
       font-size: 12px;
       color: #334155;
     }
-    .mock-attach-btn {
-      margin-top: 8px;
-      width: 100%;
-      padding: 6px 8px;
-      border-radius: 7px;
-      border: 1px solid #cbd5e1;
-      background: #fff;
-      color: #0f766e;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-    }
     .capture-meta {
       margin-top: 8px;
       font-size: 12px;
@@ -571,14 +559,14 @@
             <div class="capture-box" id="videoBox">
               <button type="button" class="capture-btn" id="btnPickVideo">🎥 選擇／錄製影片（約20秒）</button>
               <input type="file" id="videoInput" class="file-direct-input" accept="video/*" />
-                            <div class="capture-meta" id="videoMeta">尚未附加錄影檔</div>
+              <div class="capture-meta" id="videoMeta">尚未附加錄影檔</div>
               <video id="videoPreview" class="preview-media" controls playsinline></video>
             </div>
 
             <div class="capture-box" id="photoBox">
               <button type="button" class="capture-btn secondary" id="btnPickPhoto">📋 選擇／拍攝檢查表照片</button>
               <input type="file" id="photoInput" class="file-direct-input" accept="image/*" />
-                            <div class="capture-meta" id="photoMeta">尚未附加檢查表照片</div>
+              <div class="capture-meta" id="photoMeta">尚未附加檢查表照片</div>
               <img id="photoPreview" class="preview-media" alt="檢查表預覽" title="點一下放大快速導覽" />
               <div class="photo-nav-bar" id="photoNavBar">
                 <button type="button" class="photo-mini-btn" id="btnZoomPhoto">🔍 放大導覽檢查表</button>
@@ -1054,6 +1042,32 @@
         showToast(`${sourceLabel}完成（共 ${records.length} 筆）`);
       }
 
+      let photoZoomScale = 1;
+
+      function openPhotoModal(imgSrc, titleText) {
+        if (!imgSrc) return;
+        photoZoomScale = 1;
+        const mImg = document.getElementById("photoModalImg");
+        mImg.src = imgSrc;
+        mImg.style.transform = "scale(1)";
+        document.getElementById("photoModalTitle").textContent = titleText || "檢查表快速導覽";
+        document.getElementById("photoModal").classList.add("open");
+      }
+
+      function closePhotoModal() {
+        document.getElementById("photoModal").classList.remove("open");
+      }
+
+      function setPhotoZoom(deltaOrReset) {
+        const mImg = document.getElementById("photoModalImg");
+        if (deltaOrReset === "reset") {
+          photoZoomScale = 1;
+        } else {
+          photoZoomScale = Math.max(0.6, Math.min(3, +(photoZoomScale + deltaOrReset).toFixed(2)));
+        }
+        mImg.style.transform = `scale(${photoZoomScale})`;
+      }
+
       document.getElementById("photoPreview").addEventListener("click", e => {
         e.stopPropagation();
         const srcUrl = currentPhoto.dataUrl || currentPhoto.previewUrl;
@@ -1116,33 +1130,6 @@
       document.getElementById("videoInput").addEventListener("change", e => {
         handleVideoFile(e.target.files && e.target.files[0]);
       });
-
-      // Photo / checklist selection logic
-      let photoZoomScale = 1;
-
-      function openPhotoModal(imgSrc, titleText) {
-        if (!imgSrc) return;
-        photoZoomScale = 1;
-        const mImg = document.getElementById("photoModalImg");
-        mImg.src = imgSrc;
-        mImg.style.transform = "scale(1)";
-        document.getElementById("photoModalTitle").textContent = titleText || "檢查表快速導覽";
-        document.getElementById("photoModal").classList.add("open");
-      }
-
-      function closePhotoModal() {
-        document.getElementById("photoModal").classList.remove("open");
-      }
-
-      function setPhotoZoom(deltaOrReset) {
-        const mImg = document.getElementById("photoModalImg");
-        if (deltaOrReset === "reset") {
-          photoZoomScale = 1;
-        } else {
-          photoZoomScale = Math.max(0.6, Math.min(3, +(photoZoomScale + deltaOrReset).toFixed(2)));
-        }
-        mImg.style.transform = `scale(${photoZoomScale})`;
-      }
 
       function handlePhotoFile(file) {
         if (!file) return;
@@ -1263,10 +1250,9 @@
             r.abnormalGroup, r.triggerType, r.actionStatus, r.videoName, r.photoName, r.notes
           ].map(v => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`).join(",");
         });
-        const bom = "﻿";
-        const blob = new Blob([bom + headers.join(",") + "
-" + rows.join("
-")], { type: "text/csv;charset=utf-8;" });
+        const bom = "\uFEFF";
+        const csvStr = bom + headers.join(",") + "\n" + rows.join("\n");
+        const blob = new Blob([csvStr], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -1376,7 +1362,6 @@
         }
       }
 
-      // Hook cloud push on new record submission
       document.getElementById("surveyForm").addEventListener("submit", () => {
         setTimeout(() => {
           if (records.length > 0 && getEndpoint()) {
